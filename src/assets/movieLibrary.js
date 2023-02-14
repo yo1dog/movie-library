@@ -15,6 +15,7 @@ const RATING_IMG_URL_DICT = {
   'Rated G': 'assets/rating-g.png',
   'Rated PG': 'assets/rating-pg.png',
   'Rated PG-13': 'assets/rating-pg-13.png',
+  'Rated R': 'assets/rating-r.png',
 };
 
 /**
@@ -359,7 +360,10 @@ function populateDetailWindow(movie) {
   if (!detailBackgroundImgElem.complete) detailBackgroundImgElem.classList.add('loading');
   if (!detailLogoElem.complete) detailLogoElem.classList.add('loading');
   
-  ratingImgElems.forEach(x => (x.src = movie.rating? RATING_IMG_URL_DICT[movie.rating] : ''));
+  ratingImgElems.forEach(x => {
+    x.src = movie.rating? RATING_IMG_URL_DICT[movie.rating] : '';
+    x.alt = movie.rating;
+  });
   closedCaptionsImgElem.style.display = movie.hasSubtitles? '' : 'none';
   movieYearElems.forEach(x => (x.innerText = movie.year));
   runtimeElems.forEach(x => (x.innerText =
