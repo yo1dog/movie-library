@@ -425,6 +425,7 @@ function enableMouse() {
 }
 function disableMouse() {
   if (isMouseEnabled) {
+    // NOTE: Chrome (bug?) prevents the cursor from changing until after the first mouse event.
     document.documentElement.classList.add('disableMouse');
     window.addEventListener('mousemove', enableMouse);
     isMouseEnabled = false;
