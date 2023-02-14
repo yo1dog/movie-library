@@ -22,7 +22,7 @@ button, input {
   color: #cacaca
 }
 
-html.disableMouse {
+html.keyboardNav {
   pointer-events: none;
   cursor: none;
 }
@@ -103,13 +103,15 @@ main {
   transition-duration: 300ms;
   transition-timing-function: ease-out;
 }
-.gridItem.active > div {
+.keyboardNav .gridItem.active > div,
+.mouseNav .gridItem:hover > div {
   box-shadow: rgba(0,0,0,0.8) 0 40px 58px -16px, rgba(0,0,0,0.72) 0 30px 22px -10px;
   transform: scale(1.05);
   transition-duration: 300ms;
   transition-timing-function: ease-out;
 }
-.gridItem.active > div::after {
+.keyboardNav .gridItem.active > div::after,
+.mouseNav .gridItem:hover > div::after {
   border-color: rgba(249,249,249,0.8);
 }
 .gridItem span {
@@ -238,8 +240,10 @@ main {
   padding: 0 1rem;
   scroll-margin: 150px;
 }
-#backButton.active,
-#playButton.active {
+.keyboardNav #backButton.active,
+.keyboardNav #playButton.active,
+.mouseNav #backButton:hover,
+.mouseNav #playButton:hover {
   color: #0e0b14;
   background-color: #f9f9f9;
 }
@@ -288,12 +292,6 @@ main {
   bottom: 0;
   width: 100%;
   transition: background-color 200ms ease;
-}
-.detailNavItem.active::after {
-  background-color: #cacaca;
-}
-.detailNavItem.selected::after {
-  background-color: #f9f9f9;
 }
 
 #movieTitle {

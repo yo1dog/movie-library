@@ -289,7 +289,7 @@ function init() {
   ENABLE_GRID_NAV_WRAP = movieLibraryConfig.enableGridNavWrap ?? ENABLE_GRID_NAV_WRAP;
   
   if (!movieLibraryConfig.enableMouseAtStart) {
-    disableMouse();
+    useKeyboardNav();
   }
   
   // Setup detail window buttons.
@@ -342,7 +342,7 @@ function init() {
   window.addEventListener('keydown', event => {
     const wasCaught = activeNavController.handleKey(event.key);
     if (wasCaught) {
-      disableMouse();
+      useKeyboardNav();
       event.preventDefault();
       return false;
     }
@@ -419,20 +419,23 @@ function playVideo(filepath) {
   window.open(url, '_self');
 }
 
-let isMouseEnabled = true;
-function enableMouse() {
-  if (!isMouseEnabled) {
-    document.documentElement.classList.remove('disableMouse');
-    window.removeEventListener('mousemove', enableMouse);
-    isMouseEnabled = true;
+let isKeyboardNavActive = false;
+const _switchToMouseNavListener = useMouseNav;
+function useMouseNav() {
+  if (isKeyboardNavActive) {
+    document.documentElement.classList.remove('keyboardNav');
+    document.documentElement.classList.add('mouseNav');
+    window.removeEventListener('mousemove', _switchToMouseNavListener);
+    isKeyboardNavActive = false;
   }
 }
-function disableMouse() {
-  if (isMouseEnabled) {
+function useKeyboardNav() {
+  if (!isKeyboardNavActive) {
     // NOTE: Chrome (bug?) prevents the cursor from changing until after the first mouse event.
-    document.documentElement.classList.add('disableMouse');
-    window.addEventListener('mousemove', enableMouse);
-    isMouseEnabled = false;
+    document.documentElement.classList.add('keyboardNav');
+    document.documentElement.classList.remove('mouseNav');
+    window.addEventListener('mousemove', _switchToMouseNavListener);
+    isKeyboardNavActive = true;
   }
 }
 
