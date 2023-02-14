@@ -3,3 +3,4 @@ config.js
 /tmp
 /node_modules
 npm-debug.log*
+*.zip
