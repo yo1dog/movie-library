@@ -18,6 +18,13 @@ const RATING_IMG_URL_DICT = {
 };
 
 /**
+ * @typedef Config
+ * @property {boolean} [enableGridNavWrap]
+ * @property {boolean} [enableMouseAtStart]
+ * @property {Movie[]} movies
+ */
+
+/**
  * @typedef Movie
  * @property {string} title
  * @property {string} year
@@ -246,7 +253,7 @@ let activeNavController = gridWindowNavController;
 function init() {
   hideDetailWindow();
   
-  const {movieLibraryConfig} = /** @type {{movieLibraryConfig?: {movies?: any[], [key: string]: any}}} */(window);
+  const {movieLibraryConfig} = /** @type {{movieLibraryConfig?: Config}} */(window);
   if (!movieLibraryConfig) {
     errorAlertElem.innerText = 'Error: Configuration does not exist or is not able to be loaded. Check the console.';
     return;
@@ -254,7 +261,7 @@ function init() {
   
   /** @type {Movie[]} */
   const movies = [];
-  for (const movie of movieLibraryConfig.movies || []) {
+  for (const movie of Array.isArray(movieLibraryConfig.movies)? movieLibraryConfig.movies : []) {
     movies.push({
       title: movie.title || '',
       year: movie.year || '',
@@ -280,9 +287,8 @@ function init() {
   
   ENABLE_GRID_NAV_WRAP = movieLibraryConfig.enableGridNavWrap ?? ENABLE_GRID_NAV_WRAP;
   
-  if (movieLibraryConfig.disableMouse) {
-    document.body.style.pointerEvents = 'none';
-    document.head.insertAdjacentHTML('beforeend', `<style>*{cursor: none}</style>`);
+  if (!movieLibraryConfig.enableMouseAtStart) {
+    disableMouse();
   }
   
   // Setup detail window buttons.
@@ -335,6 +341,7 @@ function init() {
   window.addEventListener('keydown', event => {
     const wasCaught = activeNavController.handleKey(event.key);
     if (wasCaught) {
+      disableMouse();
       event.preventDefault();
       return false;
     }
@@ -406,6 +413,22 @@ function playVideo(filepath) {
   const url = 'movielib.player://' + filepath;
   console.log('Playing', url);
   window.open(url, '_self');
+}
+
+let isMouseEnabled = true;
+function enableMouse() {
+  if (!isMouseEnabled) {
+    document.documentElement.classList.remove('disableMouse');
+    window.removeEventListener('mousemove', enableMouse);
+    isMouseEnabled = true;
+  }
+}
+function disableMouse() {
+  if (isMouseEnabled) {
+    document.documentElement.classList.add('disableMouse');
+    window.addEventListener('mousemove', enableMouse);
+    isMouseEnabled = false;
+  }
 }
 
 init();

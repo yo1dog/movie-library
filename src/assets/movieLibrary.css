@@ -22,6 +22,11 @@ button, input {
   color: #cacaca
 }
 
+html.disableMouse {
+  pointer-events: none;
+  cursor: none;
+}
+
 body {
   background-color: #1a1d29;
   font-family: Montserrat, sans-serif;

@@ -1,6 +1,6 @@
 window.movieLibraryConfig = {
   enableGridNavWrap: false,
-  disableMouse: false,
+  enableMouseAtStart: false,
   movies: [
     {
       title: 'Aladdin',

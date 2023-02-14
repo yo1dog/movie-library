@@ -41,7 +41,7 @@ function filterFalsey(items) {
 const fileInputElem = /** @type {HTMLInputElement} */(requireElem('#fileInput'));
 const rootDirInputElem = /** @type {HTMLInputElement} */(requireElem('#rootDirInput'));
 const enableGridNavWrapCheckElem = /** @type {HTMLInputElement} */(requireElem('#enableGridNavWrapCheck'));
-const disableMouseCheckElem = /** @type {HTMLInputElement} */(requireElem('#disableMouseCheck'));
+const enableMouseAtStartCheckElem = /** @type {HTMLInputElement} */(requireElem('#enableMouseAtStartCheck'));
 const generateButtonElem = requireElem('#generateButton');
 const logElem = /** @type {HTMLTextAreaElement} */(requireElem('#log'));
 const configPreviewElem = /** @type {HTMLTextAreaElement} */(requireElem('#configPreview'));
@@ -135,7 +135,7 @@ async function generateConfig() {
   
   const configJSON = JSON.stringify({
     enableGridNavWrap: enableGridNavWrapCheckElem.checked,
-    disableMouse: disableMouseCheckElem.checked,
+    enableMouseAtStart: enableMouseAtStartCheckElem.checked,
     movies
   }, null, 2);
   
