@@ -18,6 +18,7 @@ https://user-images.githubusercontent.com/1504597/218681879-0660249c-68f3-4276-b
 
 ## Setup
 
+- Download `movieLibrary#.#.#.zip` from the [latest release](https://github.com/yo1dog/movie-library/releases/latest) and extract the files.
 - Just open the HTML files in your browser.
 - The list of movies and their attributes is pulled from a local `config.js` file. This file can be created manually or generated. An example file can be found [here](./src/config.example.js).
 - To generate the config file, use `configure.html` and follow the instructions.
