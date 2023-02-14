@@ -1,6 +1,4 @@
-# Movie Library
-
-**BETA**
+# Movie Library (BETA)
 
 A super simple frontend for browsing movies.
 
@@ -13,6 +11,9 @@ A super simple frontend for browsing movies.
 ## Requirements
 
 - A browser.
+
+
+https://user-images.githubusercontent.com/1504597/218681879-0660249c-68f3-4276-b63a-0b10d7962ae0.mp4
 
 
 ## Setup
