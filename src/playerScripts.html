@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Generate Movie Library Player Scripts</title>
+  <script src="assets/playerScripts.js"></script>
+  
+  <style>
+    body {
+      line-height: 150%;
+      font-family: Arial, Helvetica, sans-serif;
+      margin: 20px;
+    }
+    ol > li {
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <ul>
+    <li><a href="configure.html">Configure</a></li>
+    <li><a href="playerScripts.html">Player Scripts</a></li>
+  </ul>
+    
+  <p>
+    Executing the player program from the browser requires us to register a custom protocol handler
+    with Windows. This is done by adding an entry to the Windows Registry. We will register a
+    protocol for the <code>movielib.player://</code> scheme.
+  </p>
+  <p>
+    <strong>NOTE:</strong> The first time you attempt to play a video, the browser will ask if you
+    want to allow the page to open links with our custom protocol. Check "always allow" to never see
+    this prompt again.
+  </p>
+  
+  <ol>
+    <li>
+      Enter the full path of directory you want to save the scripts in. I suggest you save them next
+      to <code>movieLibrary.html</code> for convenience. For example, <code>D:\movieLibrary\</code><br />
+      <input id="rootDirInput" type="text" />
+    </li>
+    <li>
+      Generate the scripts.<br />
+      <button id="generateButton">Generate</button>
+    </li>
+    <li>
+      Download the scripts and save them in the directory you entered above. You can open them in
+      any text editor to ensure the paths look correct.
+      <ul>
+        <li><code id="downloadFilepath"></code></li>
+        <li><a id="regDownloadLink" download="movielib.player.reg"><code>movielib.player.reg</code></a></li>
+        <li><a id="vbsDownloadLink" download="movielib.player.vbs"><code>movielib.player.vbs</code></a></li>
+        <li><a id="ps1DownloadLink" download="movielib.player.ps1"><code>movielib.player.ps1</code></a></li>
+      </ul>
+    </li>
+    <li>
+      Allow Windows to execute the scripts by unblocking them. In Windows Explorer, right-click each
+      file -> Properties -> Check "Unblock" at the bottom right -> OK.
+    </li>
+    <li>
+      Install the Windows registry keys by double-clicking <code>movielib.player.reg</code>. Or,
+      <code>File -> Import</code> from within regedit. You can delete this file afterwards.
+    </li>
+    <li>
+      Modify <code>movielib.player.ps1</code> as needed. You may need to change the path for VLC. Or, you
+      can replace VLC with a different player or program.
+    </li>
+    <li>
+      Test by entering the full path or a URL to a video bellow and pressing the "test" button. For
+      example, <code>D:\Content\mymovie.mp4</code> or <code>https://download.samplelib.com/mp4/sample-5s.mp4</code><br />
+      <input id="testInput" type="text" /> <button id="testButton">Test</button>
+    </li>
+  </ol>
+</body>
+</html>

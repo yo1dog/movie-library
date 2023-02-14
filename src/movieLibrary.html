@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Movie Library</title>
+  <link rel="stylesheet" href="assets/movieLibrary.css"></style>
+  <script src="config.js"></script>
+  <script src="assets/movieLibrary.js"></script>
+</head>
+
+<body class="primaryTextColor">
+  <pre id="errorAlert">Unknown Error. Check the console.</pre>
+  <main id="gridWindow">
+    <div id="grid">
+      <template>
+        <div class="gridItem">
+          <div>
+            <span class="gridItemText"></span>
+            <img class="gridItemImg" />
+          </div>
+        </div>
+      </template>
+    </div>
+  </main>
+  <main id="detailWindow" class="hidden">
+    <div>
+      <div id="detailBackgroundImgContainer">
+        <img class="fadeAfterLoading" />
+        <div></div>
+      </div>
+      <img id="detailLogo" class="fadeAfterLoading" />
+      <div id="detailTopPanel">
+        <div id="detailTopPanelIcons">
+          <img name="ratingImg" />
+          <img id="closedCaptionsImg" src="assets/cc.png" />
+          <span>
+            <span name="movieYear"></span> • <span name="runtime"></span>
+          </span>
+        </div>
+        <div id="detailTopPanelGeneres" name="generes"></div>
+        <div id="detailTopPanelButtons">
+          <button id="backButton">BACK</button>
+          <button id="playButton">
+            <svg viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg"><path d="M27.147 20.421L11.27 29.274A2.2 2.2 0 0 1 8 27.353V9.647a2.2 2.2 0 0 1 3.271-1.921l15.876 8.852a2.2 2.2 0 0 1 0 3.843z"></path></svg>
+            PLAY
+          </button>
+        </div>
+        <p id="detailTopPanelDesc"></p>
+      </div>
+      <div id="detailNav">
+        <div class="detailNavItem selected">
+          DETAILS
+        </div>
+      </div>
+      <h1 id="movieTitle"></h1>
+      <div id="detailBottomPannel">
+        <div id="detailBottomPannelLeft">
+          <div>
+            <p class="secondaryTextColor">Duration:</p>
+            <p name="runtime"></p>
+          </div>
+          <div>
+            <p class="secondaryTextColor">Release date:</p>
+            <p name="movieYear"></p>
+          </div>
+          <div>
+            <p class="secondaryTextColor">Genre:</p>
+            <p name="generes"></p>
+          </div>
+          <div>
+            <p class="secondaryTextColor">Rating:</p>
+            <img name="ratingImg" />
+          </div>
+        </div>
+        <div id="detailBottomPannelRight">
+          <div>
+            <p class="secondaryTextColor">Director:</p>
+            <p id="directors"></p>
+          </div>
+          <div>
+            <p id="starring" class="secondaryTextColor">Starring:</p>
+            <template>
+              <p></p>
+            </template>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</body>
+
+</html>

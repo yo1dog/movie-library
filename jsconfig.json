@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "lib": ["es2020","dom"],
+    "module": "esnext",
+    "target": "es2020",
+    "strict": true,
+    "strictNullChecks": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "maxNodeModuleJsDepth": 0,
+    "moduleResolution": "Node",
+    "noImplicitAny": true,
+    "checkJs": true
+  },
+  "include": ["src"],
+  "exclude": [
+    "node_modules",
+    "**/config.js",
+    "src/config.example.js",
+  ]
+}

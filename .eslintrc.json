@@ -1,0 +1,179 @@
+{
+  "parser": "@typescript-eslint/parser",
+  "plugins": ["@typescript-eslint"],
+  "extends": [
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended",
+    "plugin:@typescript-eslint/recommended-requiring-type-checking"
+  ],
+  "parserOptions": {
+    "ecmaVersion": 2020,
+    "sourceType": "script",
+    "project": "jsconfig.json"
+  },
+  "env": {
+    "es6": true,
+    "node": false,
+    "browser": true
+  },
+  "rules": {
+    // --- JavaScript ---
+    // Possible Errors
+    "no-template-curly-in-string": "error",
+    
+    // Best Practices
+    "array-callback-return": "error",
+    "block-scoped-var": "error",
+    "curly": ["error", "multi-line"],
+    "dot-location": ["error", "property"],
+    "eqeqeq": "error",
+    "no-caller": "error",
+    "no-empty-function": "error",
+    "no-eq-null": "error",
+    "no-eval": "error",
+    "no-extend-native": "error",
+    "no-extra-bind": "error",
+    "no-extra-label": "off",
+    "no-floating-decimal": "error",
+    "no-implicit-coercion": "error",
+    "no-implied-eval": "error",
+    "no-invalid-this": "error",
+    "no-iterator": "error",
+    "no-labels": ["error", {"allowLoop": true, "allowSwitch": true}],
+    "no-lone-blocks": "error",
+    "no-loop-func": "error",
+    "no-new": "error",
+    "no-new-func": "error",
+    "no-new-wrappers": "error",
+    "no-octal-escape": "error",
+    "no-proto": "error",
+    "no-return-assign": "error",
+    "no-self-compare": "error",
+    "no-sequences": "error",
+    "no-throw-literal": "error",
+    "no-unused-expressions": "error",
+    "no-useless-call": "error",
+    "no-warning-comments": ["warn", {"terms": ["todo", "fixme", "xxx", "debug"]}],
+    "prefer-promise-reject-errors": "error",
+    "radix": "error",
+    "wrap-iife": ["error", "inside"],
+    "yoda": "error",
+    
+    // Strict Mode
+    
+    // Variables
+    "no-label-var": "error",
+    "no-restricted-globals": ["error", "event", "fdescribe"],
+    "no-use-before-define": ["error", {"functions": false, "classes": false, "variables": true}],
+    
+    // Node.js and CommonJS
+    "callback-return": "error",
+    "handle-callback-err": "error",
+    "no-buffer-constructor": "error",
+    "no-path-concat": "error",
+    "no-new-require": "error",
+    "no-process-env": "error",
+    "no-unused-vars": ["error", {"args": "none"}],
+    
+    // Stylistic Issues
+    "camelcase": ["error", {"properties": "never"}],
+    "jsx-quotes": ["error", "prefer-double"],
+    "linebreak-style": ["error", "unix"],
+    "new-cap": ["error", {"capIsNewExceptions": ["SQL", "express.Router"]}],
+    "new-parens": "error",
+    "no-array-constructor": "error",
+    "no-bitwise": "error",
+    "no-mixed-operators": "error",
+    "no-new-object": "error",
+    "no-tabs": "error",
+    "one-var": ["error", "never"],
+    "quotes": ["error", "single", {"allowTemplateLiterals": true}],
+    "semi": "error",
+    "unicode-bom": "error",
+    
+    // ECMAScript 6
+    "no-confusing-arrow": "error",
+    "no-var": "error",
+    "prefer-arrow-callback": ["error", {"allowNamedFunctions": true}],
+    "prefer-const": "error",
+    
+    // --- TypeScript ---
+    "@typescript-eslint/indent": "off",
+    "@typescript-eslint/no-extraneous-class": "error",
+    "@typescript-eslint/no-for-in-array": "error",
+    "@typescript-eslint/no-misused-promises": "error",
+    "@typescript-eslint/no-this-alias": "error",
+    "no-use-before-define": "off",
+    "@typescript-eslint/no-use-before-define": ["error", {"functions": false, "classes": false, "variables": true, "typedefs": false}],
+    "@typescript-eslint/prefer-function-type": "error",
+    "@typescript-eslint/prefer-includes": "error",
+    "semi": "off",
+    "@typescript-eslint/semi": "error",
+    "@typescript-eslint/triple-slash-reference": "error",
+    "@typescript-eslint/unified-signatures": "error",
+    "no-unused-vars": "off",
+    "@typescript-eslint/no-unused-vars": ["error", {"args": "none"}],
+    "@typescript-eslint/explicit-function-return-type": "off",
+    "@typescript-eslint/explicit-module-boundary-types": "off",
+    "@typescript-eslint/no-empty-interface": "off",
+    "@typescript-eslint/no-inferrable-types": "off",
+    "@typescript-eslint/ban-ts-comment": "off",
+    "@typescript-eslint/ban-ts-ignore": "off",
+    "@typescript-eslint/require-await": "off",
+    "@typescript-eslint/no-var-requires": "off",
+    "@typescript-eslint/no-require-imports": "off",
+    "no-empty-function": "off",
+    "@typescript-eslint/no-empty-function": "error",
+    "camelcase": "off",
+    "@typescript-eslint/camelcase": "off",
+    "@typescript-eslint/no-unsafe-assignment": "off",
+    "@typescript-eslint/no-unsafe-call": "off",
+    "@typescript-eslint/no-unsafe-member-access": "off",
+    "@typescript-eslint/no-unsafe-return": "off",
+    "@typescript-eslint/prefer-string-starts-ends-with": "error",
+    "@typescript-eslint/member-delimiter-style": "error",
+    "@typescript-eslint/naming-convention": [
+      "error",
+      {
+        "selector": "variableLike",
+        "format": ["camelCase"],
+        "leadingUnderscore": "allow"
+      },
+      {
+        "selector": "variable",
+        "format": ["camelCase", "UPPER_CASE"],
+        "leadingUnderscore": "allow"
+      },
+      {
+        "selector": "property",
+        "format": null,
+        "leadingUnderscore": "allow"
+      },
+      {
+        "selector": "memberLike",
+        "format": ["camelCase"],
+        "leadingUnderscore": "allow"
+      },
+      {
+        "selector": "typeLike",
+        "format": ["PascalCase"]
+      },
+      {
+        "selector": "interface",
+        "prefix": ["I"],
+        "format": ["PascalCase"]
+      },
+      {
+        "selector": "enum",
+        "prefix": ["E"],
+        "format": ["PascalCase"]
+      },
+      {
+        "selector": "enumMember",
+        "format": ["UPPER_CASE"]
+      }
+    ]
+    
+    // --- Project Specific ---
+  }
+}
