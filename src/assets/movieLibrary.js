@@ -348,6 +348,11 @@ function init() {
     }
   });
   
+  // Remember the last active grid item.
+  // const lastGridActiveItemIndex = loadGridLastActiveItemIndex();
+  // gridNavList.setActiveItem(lastGridActiveItemIndex || 0);
+  // window.addEventListener('beforeunload', () => saveGridLastActiveItemIndex(gridNavList.activeItem?.index));
+  
   errorAlertElem.style.display = 'none';
 }
 
@@ -438,6 +443,19 @@ function useKeyboardNav() {
     isKeyboardNavActive = true;
   }
 }
+
+// function loadGridLastActiveItemIndex() {
+//   const indexStr = localStorage.getItem('lastGridActiveItemIndex');
+//   if (!indexStr) return;
+//   const index = parseInt(indexStr, 10);
+//   if (isNaN(index) || index < 0) return;
+//   return index;
+// }
+// /** @param {number | undefined} index */
+// function saveGridLastActiveItemIndex(index) {
+//   if (index === undefined || index < 0) return;
+//   localStorage.setItem('lastGridActiveItemIndex', index.toString());
+// }
 
 init();
 } window.addEventListener('DOMContentLoaded', () => load());
