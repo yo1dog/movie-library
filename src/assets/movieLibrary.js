@@ -323,6 +323,11 @@ function init() {
     if (movie.thumbURL) {
       gridItemImgElem.src = movie.thumbURL;
     }
+    else if (movie.logoURL) {
+      gridItemImgElem.src = movie.logoURL;
+      gridItemImgElem.classList.add('logo');
+      gridItemTextElem.remove();
+    }
     else {
       gridItemImgElem.remove();
     }
