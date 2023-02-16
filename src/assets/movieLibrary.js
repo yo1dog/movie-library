@@ -324,7 +324,7 @@ function init() {
       gridItemImgElem.src = movie.thumbURL;
     }
     else {
-      gridItemImgElem.parentElement?.removeChild(gridItemImgElem);
+      gridItemImgElem.remove();
     }
     
     gridElem.appendChild(gridItemElem);
@@ -382,7 +382,7 @@ function populateDetailWindow(movie) {
   
   for (const child of Array.from(starringContainerElem.children)) {
     if (child !== starringElem) {
-      starringContainerElem.removeChild(child);
+      child.remove();
     }
   }
   
