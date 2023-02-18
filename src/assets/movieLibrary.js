@@ -8,6 +8,12 @@ function load() {
 const GRID_NUM_COLUMNS = 5;
 // ------------------------
 
+/**
+ * @typedef CustomWindow
+ * @property {Config} [movieLibraryConfig]
+ * @property {(movie: Movie) => boolean} [movieLibraryFilter]
+ * @property {(movieA: Movie, movieB: Movie) => number} [movieLibrarySort]
+ */
 
 /** @type {Record<string, string>} */
 const RATING_IMG_URL_DICT = {
@@ -27,6 +33,7 @@ const RATING_IMG_URL_DICT = {
 /**
  * @typedef Movie
  * @property {string} title
+ * @property {string} sortStr
  * @property {string} year
  * @property {string} plot
  * @property {string} tagline
@@ -39,7 +46,7 @@ const RATING_IMG_URL_DICT = {
  * @property {string} thumbURL
  * @property {string} logoURL
  * @property {string} keyartURL
- * @property {string} [videoFilepath]
+ * @property {string} videoFilepath
  */
 
 /**
@@ -255,17 +262,19 @@ let activeNavController = gridWindowNavController;
 function init() {
   hideDetailWindow();
   
-  const {movieLibraryConfig} = /** @type {{movieLibraryConfig?: Config}} */(window);
+  const cWindow = /** @type {CustomWindow} */(window);
+  const {movieLibraryConfig} = cWindow;
   if (!movieLibraryConfig) {
     errorAlertElem.innerText = 'Error: Configuration does not exist or is not able to be loaded. Check the console.';
     return;
   }
   
   /** @type {Movie[]} */
-  const movies = [];
+  let movies = [];
   for (const movie of Array.isArray(movieLibraryConfig.movies)? movieLibraryConfig.movies : []) {
     movies.push({
       title: movie.title || '',
+      sortStr: movie.sortStr || '',
       year: movie.year || '',
       plot: movie.plot || '',
       tagline: movie.tagline || '',
@@ -278,13 +287,26 @@ function init() {
       thumbURL: movie.thumbURL || '',
       logoURL: movie.logoURL || '',
       keyartURL: movie.keyartURL || '',
-      videoFilepath: movie.videoFilepath || undefined,
+      videoFilepath: movie.videoFilepath || '',
     });
   }
   
   if (!movies.length) {
     errorAlertElem.innerText = 'Error: Configuration contains no movies.';
     return;
+  }
+  
+  if (cWindow.movieLibraryFilter) {
+    movies = movies.filter(cWindow.movieLibraryFilter);
+  }
+  
+  if (!movies.length) {
+    errorAlertElem.innerText = 'Error: No movies remaining after filtering.';
+    return;
+  }
+  
+  if (cWindow.movieLibrarySort) {
+    movies = movies.sort(cWindow.movieLibrarySort);
   }
   
   if (!movieLibraryConfig.enableMouseAtStart) {
