@@ -6,7 +6,6 @@ function load() {
 // Config
 // ------------------------
 const GRID_NUM_COLUMNS = 5;
-let ENABLE_GRID_NAV_WRAP = false;
 // ------------------------
 
 
@@ -67,12 +66,14 @@ class NavigatableList {
   /**
    * @param {NavListItemRaw[]} rawItems
    * @param {number} [gridNumColumns]
+   * @param {boolean} [enableWrap]
    */
-  constructor(rawItems, gridNumColumns) {
+  constructor(rawItems, gridNumColumns, enableWrap) {
     if (rawItems.length === 0) throw new Error(`No items given.`);
     
     this.numColumns = gridNumColumns || rawItems.length;
     this.numRows = Math.ceil(rawItems.length / this.numColumns);
+    this.enableWrap = enableWrap ?? false;
     
     // For each given item, calculate some values and add it to the list.
     /** @type {NavListItem[]} */
@@ -110,7 +111,7 @@ class NavigatableList {
    */
   move(dx, dy) {
     let index;
-    if (ENABLE_GRID_NAV_WRAP) {
+    if (this.enableWrap) {
       index = (this.activeItem?.index || 0) + dx + (dy * this.numColumns);
       if (index < 0) index = 0;
       if (index > this.items.length - 1) index = this.items.length - 1;
@@ -286,8 +287,6 @@ function init() {
     return;
   }
   
-  ENABLE_GRID_NAV_WRAP = movieLibraryConfig.enableGridNavWrap ?? ENABLE_GRID_NAV_WRAP;
-  
   if (!movieLibraryConfig.enableMouseAtStart) {
     useKeyboardNav();
   }
@@ -340,7 +339,11 @@ function init() {
     });
   }
   
-  gridNavList = new NavigatableList(navItems, GRID_NUM_COLUMNS);
+  gridNavList = new NavigatableList(
+    navItems,
+    GRID_NUM_COLUMNS,
+    movieLibraryConfig.enableGridNavWrap
+  );
   gridNavList.setActiveItem(0);
   
   // Register key listener.
