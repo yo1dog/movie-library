@@ -6,8 +6,11 @@ const MAX_NUM_PREVIEW_MOVIES = 50;
 /**
  * @typedef Movie
  * @property {string} title
- * @property {string} sortStr
+ * @property {string} titleSortStr
+ * @property {string} [setName]
+ * @property {string} [setNameSortStr]
  * @property {string} [year]
+ * @property {string} [premiereDateISOStr]
  * @property {string} [plot]
  * @property {string} [tagline]
  * @property {string} [rating]
@@ -20,6 +23,7 @@ const MAX_NUM_PREVIEW_MOVIES = 50;
  * @property {string} [logoURL]
  * @property {string} [keyartURL]
  * @property {string} [videoFilepath]
+ * @property {string} [setName]
  */
 
 /**
@@ -70,7 +74,7 @@ async function generateConfig() {
   }
   
   const files = Array.from(fileList).filter(x =>
-    !/(^|[/\\])\./.test(x.name) // Ignore dot files and folders.
+    !/(^|[/\\])\./.test(x.webkitRelativePath) // Ignore dot files and folders.
   );
   const nfoFiles = files.filter(x => x.name.endsWith('.nfo'));
   log(`NFO files: ${nfoFiles.length}`);
@@ -92,8 +96,11 @@ async function generateConfig() {
     /** @type {Movie} */
     const movie = {};
     movie.title = movieNode.getElementsByTagName('title')[0]?.textContent || nfoBaseFilename;
-    movie.sortStr = genSortStr(movie.title);
+    movie.titleSortStr = genSortStr(movie.title);
+    movie.setName = movieNode.querySelector('set name')?.textContent || undefined;
+    movie.setNameSortStr = movie.setName && genSortStr(movie.setName);
     movie.year = movieNode.getElementsByTagName('year')[0]?.textContent || undefined;
+    movie.premiereDateISOStr = movieNode.getElementsByTagName('premiered')[0]?.textContent || undefined;
     movie.plot = movieNode.getElementsByTagName('plot')[0]?.textContent || undefined;
     movie.tagline = movieNode.getElementsByTagName('tagline')[0]?.textContent || undefined;
     movie.rating = movieNode.getElementsByTagName('mpaa')[0]?.textContent || undefined;
@@ -131,7 +138,7 @@ async function generateConfig() {
     movies.push(movie);
   }
   
-  movies.sort((a, b) => a.sortStr.localeCompare(b.sortStr));
+  movies.sort((a, b) => a.titleSortStr.localeCompare(b.titleSortStr));
   
   log(`Movies: ${movies.length}`);
   

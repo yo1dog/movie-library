@@ -33,8 +33,11 @@ const RATING_IMG_URL_DICT = {
 /**
  * @typedef Movie
  * @property {string} title
- * @property {string} sortStr
+ * @property {string} titleSortStr
+ * @property {string} setName
+ * @property {string} setNameSortStr
  * @property {string} year
+ * @property {string} premiereDateISOStr
  * @property {string} plot
  * @property {string} tagline
  * @property {string} rating
@@ -274,8 +277,11 @@ function init() {
   for (const movie of Array.isArray(movieLibraryConfig.movies)? movieLibraryConfig.movies : []) {
     movies.push({
       title: movie.title || '',
-      sortStr: movie.sortStr || '',
+      titleSortStr: movie.titleSortStr || '',
+      setName: movie.setName || '',
+      setNameSortStr: movie.setNameSortStr || '',
       year: movie.year || '',
+      premiereDateISOStr: movie.premiereDateISOStr || '',
       plot: movie.plot || '',
       tagline: movie.tagline || '',
       rating: movie.rating || '',
@@ -306,7 +312,7 @@ function init() {
   }
   
   if (cWindow.movieLibrarySort) {
-    movies = movies.sort(cWindow.movieLibrarySort);
+    movies.sort(cWindow.movieLibrarySort);
   }
   
   if (!movieLibraryConfig.enableMouseAtStart) {

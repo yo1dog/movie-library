@@ -8,8 +8,11 @@
 /**
  * @typedef Movie
  * @property {string} title
- * @property {string} sortStr
+ * @property {string} titleSortStr
+ * @property {string} setName
+ * @property {string} setNameSortStr
  * @property {string} year
+ * @property {string} premiereDateISOStr
  * @property {string} plot
  * @property {string} tagline
  * @property {string} rating
@@ -21,12 +24,17 @@
  * @property {string} thumbURL
  * @property {string} logoURL
  * @property {string} keyartURL
- * @property {string} [videoFilepath]
+ * @property {string} videoFilepath
  */
 
 /** @type {CustomWindow} */
 const cwindow = {
-  movieLibraryFilter: (movie) => ['Rated G', 'Rated PG'].includes(movie.rating)
+  movieLibraryFilter: (movie) => ['Rated G', 'Rated PG'].includes(movie.rating),
+  movieLibrarySort: (a, b) => (
+    a.setName === b.setName
+    ? a.premiereDateISOStr.localeCompare(b.premiereDateISOStr)
+    : (a.setNameSortStr || a.titleSortStr).localeCompare(b.setNameSortStr || b.titleSortStr)
+  )
 };
 
 Object.assign(window, cwindow);
