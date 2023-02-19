@@ -1,6 +1,8 @@
 'use strict';
 function load() {
 
+const MAX_NUM_PREVIEW_MOVIES = 50;
+
 /**
  * @typedef Movie
  * @property {string} title
@@ -171,7 +173,9 @@ function populatePreviewTable(movies) {
     previewTableElem.deleteRow(1);
   }
   
-  for (const movie of movies) {
+  const numPreviewMovies = Math.min(movies.length, MAX_NUM_PREVIEW_MOVIES);
+  for (let i = 0; i < numPreviewMovies; ++i) {
+    const movie = movies[i];
     const rowElem = previewTableElem.insertRow();
     rowElem.insertCell().innerText = movie.title;
     rowElem.insertCell().innerText = movie.videoFilepath || '<empty>';
@@ -189,6 +193,14 @@ function populatePreviewTable(movies) {
     else {
       rowElem.insertCell().innerText = '<empty>';
     }
+  }
+  
+  const numRemainingMovies = movies.length - numPreviewMovies;
+  if (numRemainingMovies > 0) {
+    const rowElem = previewTableElem.insertRow();
+    const cellElem = rowElem.insertCell();
+    cellElem.colSpan = 3;
+    cellElem.innerText = `${numRemainingMovies} more...`;
   }
 }
 /** @param {string} [configJSON] */
