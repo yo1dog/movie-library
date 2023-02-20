@@ -19,7 +19,7 @@ const GRID_NUM_COLUMNS = 5;
 const RATING_IMG_URL_DICT = {
   'Rated G': 'assets/rating-g.png',
   'Rated PG': 'assets/rating-pg.png',
-  'Rated PG-13': 'assets/rating-pg-13.png',
+  'Rated PG-13': 'assets/rating-pg13.png',
   'Rated R': 'assets/rating-r.png',
 };
 
