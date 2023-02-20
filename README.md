@@ -27,7 +27,7 @@ https://user-images.githubusercontent.com/1504597/218681879-0660249c-68f3-4276-b
 - You can download skins for VLC if you do not like the default interface (or use a different player entirely).
 - The config generator and player scripts are built for Windows (for now).
 - Works best in FireFox as it handles scrolling better.
-
+- You can specify custom filtering and sorting functions by creating a local `custom.js` file. An example file can be found [here](./src/custom.example.js).
 
 ## Source
 

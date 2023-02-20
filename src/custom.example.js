@@ -30,6 +30,7 @@
 /** @type {CustomWindow} */
 const cwindow = {
   movieLibraryFilter: (movie) => ['Rated G', 'Rated PG'].includes(movie.rating),
+  // Sort movies in sets by release date.
   movieLibrarySort: (a, b) => (
     a.setName === b.setName
     ? a.premiereDateISOStr.localeCompare(b.premiereDateISOStr)
