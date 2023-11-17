@@ -374,7 +374,7 @@ class MenuScreen extends Screen {
       const gridItemTextElem = requireElem('.gridItemText', gridItemNode);
       const gridItemImgElem = /**@type {HTMLImageElement} */(requireElem('.gridItemImg', gridItemNode));
       
-      gridElem.style.gridTemplateColumns = `repeat(${menuItems.length}, 1fr)`;
+      gridElem.style.gridTemplateColumns = `repeat(${menuItems.length}, minmax(auto, 25vw))`;
       
       gridItemTextElem.innerText = menuItem.title;
       
@@ -408,7 +408,7 @@ class MenuScreen extends Screen {
       case 'BACK':
         if (event.repeat) return 2;
         this.close();
-        return 1;
+        return 2;
       case 'SELECT':
         if (event.repeat) return 2;
         this.navList.activeItem?.action(event);
@@ -491,7 +491,7 @@ class GridScreen extends Screen {
       case 'BACK':
         if (event.repeat) return 2;
         this.close();
-        return 1;
+        return 2;
       case 'SELECT':
         if (event.repeat) return 2;
         this.navList.activeItem?.action(event);
@@ -601,7 +601,7 @@ class DetailScreen extends Screen {
       case 'BACK':
         if (event.repeat) return 2;
         this.close();
-        return 1;
+        return 2;
       case 'SELECT':
         if (event.repeat) return 2;
         this.navList.activeItem?.action(event);
@@ -745,7 +745,7 @@ class PinScreen extends Screen {
       case 'BACK':
         if (event.repeat) return 2;
         this.close();
-        return 1;
+        return 2;
       case 'SELECT':
         if (event.repeat) return 2;
         this.navList.activeItem?.action(event);
@@ -1101,17 +1101,15 @@ function init() {
     }))).show()
   }, {
     title: 'TV',
-    action: () => new PinScreen('1141', () =>
+    action: () => new PinScreen('1111', () =>
       new GridScreen([
-        {title: 'Test1', action: () => console.log('Test1')},
-        {title: 'Test2', action: () => console.log('Test2')},
-        {title: 'Test3', action: () => console.log('Test3')},
+        {title: 'Test1', action: () => new PlayerScreen(`C:\\Users\\Mike\\Downloads\\test.mp4`).show()},
+        {title: 'Test2', action: () => new PlayerScreen(`C:\\Users\\Mike\\Downloads\\test2.mp4`).show()},
+        {title: 'Test3', action: () => new PlayerScreen(`M:\\TV\\Ambient Swim\\bumps\\bump${Math.floor(Math.random()*1521)}.mp4`).show()},
+        //{title: 'Test4', action: () => new PlayerScreen(`C:\\Users\\Mike\\Downloads\\The Office (US) (2005) - S01E01 - Pilot (1080p AMZN WEB-DL x265 LION).mkv`).show()},
       ]).show()
     ).show()
   }]).show();
-  new PlayerScreen(
-    `C:\\Users\\Mike\\Downloads\\test.mp4`
-  ).show();
   
   // Register key listener.
   window.addEventListener('keydown', event => {

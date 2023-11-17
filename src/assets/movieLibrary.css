@@ -159,6 +159,13 @@ body {
   padding: 5px;
 }
 
+.menuScreen .grid {
+  margin: 0;
+  height: 100%;
+  align-content: center;
+  justify-content: center;
+}
+
 .detailScreen > div {
   display: flex;
   flex-direction: column;
@@ -517,6 +524,10 @@ body {
   background-image: linear-gradient(to right, #FFF var(--value, 50%), rgba(99, 99, 99, 0.5) var(--value, 50%));
   border-radius: 1pt;
   height: 2pt;
+  transition: box-shadow 200ms ease-out;
+}
+.playerScrubber.active::-moz-range-track {
+  box-shadow: rgba(255,255,255,0.75) 0pt 0pt 4pt 2pt;
 }
 .playerScrubber::-moz-range-thumb {
   appearance: none;
