@@ -35,9 +35,7 @@ html.keyboardNav {
   cursor: none;
 }
 .screenBody {
-  width: 100%;
-  height: 100%;
-  padding: 8px calc(3.5vw + 32px);
+  padding: 0 calc(3.5vw + 32px);
 }
 .keyboardNav .screenBody {
   pointer-events: none;
@@ -84,9 +82,7 @@ body {
 
 .grid {
   display: grid;
-  /*grid-template-columns: repeat(5, 1fr); - Set bellow via JS*/
   grid-gap: 20px;
-  margin: 20px 0;
 }
 .gridItem {
   /* required to be in parent for chrome due to hidden overflow */
@@ -167,8 +163,14 @@ body {
   padding: 5px;
 }
 
+.gridScreen .grid {
+  padding: 8px 0;
+}
+
+.menuScreen .screenBody {
+  height: 100%;
+}
 .menuScreen .grid {
-  margin: 0;
   height: 100%;
   align-content: center;
   justify-content: center;
@@ -343,6 +345,7 @@ body {
 }
 
 .pinScreen .screenBody {
+  height: 100%;
   display: flex;
   flex-direction: column;
   align-content: center;

@@ -460,6 +460,7 @@ class GridScreen extends Screen {
     /** @type {NavListItemRaw[]} */
     const navItems = [];
     
+    // TODO: hack
     menuItems.unshift({
       title: 'Back',
       action: () => this.close(),
@@ -496,7 +497,7 @@ class GridScreen extends Screen {
       });
     }
     
-    const navList = new NavigatableList(navItems);
+    const navList = new NavigatableList(navItems, GRID_NUM_COLUMNS);
     navList.setActiveItem(0, false);
     
     super(screenElem);
