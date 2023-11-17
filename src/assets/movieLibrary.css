@@ -16,6 +16,9 @@ button, input {
   background: none;
   border: none;
 }
+button, img {
+  user-select: none;
+}
 
 .primaryTextColor {
   color: #f9f9f9;
@@ -88,6 +91,7 @@ body {
 .gridItem {
   /* required to be in parent for chrome due to hidden overflow */
   scroll-margin: 150px;
+  user-select: none;
 }
 .gridItem > div {
   aspect-ratio: 16/9;
