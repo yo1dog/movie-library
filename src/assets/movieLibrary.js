@@ -851,6 +851,7 @@ class PlayerScreen extends Screen {
     const screenElem = requireElem('main', frag);
     const videoElem = /** @type {HTMLVideoElement} */(requireElem('video', screenElem));
     const playerElem = /** @type {HTMLInputElement} */(requireElem('.player', screenElem));
+    const controlsElem = /** @type {HTMLInputElement} */(requireElem('.playerControls', screenElem));
     const scrubberElem = /** @type {HTMLInputElement} */(requireElem('.playerScrubber', screenElem));
     const timeElem = requireElem('.playerTime', screenElem);
     const durationElem = requireElem('.playerDuration', screenElem);
@@ -908,12 +909,14 @@ class PlayerScreen extends Screen {
     /** @param {number} [durationMS] */
     function activateControls(durationMS) {
       isControlsActive = true;
+      controlsElem.inert = false;
       playerElem.classList.remove('hiddenControls');
       if (controlsTimeoutID) clearTimeout(controlsTimeoutID);
       controlsTimeoutID = setTimeout(deactivateControls, durationMS || PLAYER_CONTROLS_TIMEOUT_MS);
     }
     function deactivateControls() {
       isControlsActive = false;
+      controlsElem.inert = true;
       playerElem.classList.add('hiddenControls');
       unselectScrubber();
     }
