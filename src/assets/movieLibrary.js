@@ -6,14 +6,12 @@ function load() {
 // Config
 // ------------------------
 const GRID_NUM_COLUMNS = 5;
+const PLAYER_CONTROLS_TIMEOUT_MS = 3000;
+const PLAYER_CONTROLS_TIMEOUT_PLAY_MS = 1000;
+const PLAYER_SKIP_SMALL_DURATION_S = 10;
+const PLAYER_SKIP_MEDIUM_DURATION_S = 30;
+const PLAYER_SKIP_LARGE_DURATION_S = 5*60;
 // ------------------------
-
-/**
- * @typedef CustomWindow
- * @property {Config} [movieLibraryConfig]
- * @property {(movie: Movie) => boolean} [movieLibraryFilter]
- * @property {(movieA: Movie, movieB: Movie) => number} [movieLibrarySort]
- */
 
 /** @type {Record<string, string>} */
 const RATING_IMG_URL_DICT = {
@@ -22,6 +20,30 @@ const RATING_IMG_URL_DICT = {
   'Rated PG-13': 'assets/rating-pg13.png',
   'Rated R': 'assets/rating-r.png',
 };
+
+/** @typedef {'BACK'|'SELECT'|'LEFT'|'RIGHT'|'UP'|'DOWN'|'DIGIT'} KeyAction  */
+/** @type {Record<string, KeyAction>} */
+const KEY_ACTION_DICT = {
+  'Escape': 'BACK',
+  'Backspace': 'BACK',
+  'Space': 'SELECT',
+  ' ': 'SELECT',
+  'Enter': 'SELECT',
+  'ArrowLeft': 'LEFT',
+  'ArrowRight': 'RIGHT',
+  'ArrowUp': 'UP',
+  'ArrowDown': 'DOWN',
+};
+for (let i = 0; i <=9; ++i) {
+  KEY_ACTION_DICT[i.toString()] = 'DIGIT';
+}
+
+/**
+ * @typedef CustomWindow
+ * @property {Config} [movieLibraryConfig]
+ * @property {(movie: Movie) => boolean} [movieLibraryFilter]
+ * @property {(movieA: Movie, movieB: Movie) => number} [movieLibrarySort]
+ */
 
 /**
  * @typedef Config
@@ -53,23 +75,45 @@ const RATING_IMG_URL_DICT = {
  */
 
 /**
- * @typedef NavController
- * @property {(key: string) => boolean} handleKey
- */
-
-/**
  * @typedef NavListItemRaw
  * @property {HTMLElement} elem
- * @property {() => void} action
+ * @property {(event?: KeyboardEvent | MouseEvent) => void} action
  */
 /**
  * @typedef NavListItem
  * @property {HTMLElement} elem
- * @property {() => void} action
+ * @property {(event?: KeyboardEvent | MouseEvent) => void} action
  * @property {number} index
  * @property {number} x
  * @property {number} y
  */
+
+const navController = (() => {
+  let isKeyboardNavActive = false;
+  const _switchToMouseNavListener = useMouseNav;
+  function useMouseNav() {
+    if (isKeyboardNavActive) {
+      document.documentElement.classList.remove('keyboardNav');
+      document.documentElement.classList.add('mouseNav');
+      window.removeEventListener('mousemove', _switchToMouseNavListener);
+      isKeyboardNavActive = false;
+    }
+  }
+  function useKeyboardNav() {
+    if (!isKeyboardNavActive) {
+      // NOTE: Chrome (bug?) prevents the cursor from changing until after the first mouse event.
+      document.documentElement.classList.add('keyboardNav');
+      document.documentElement.classList.remove('mouseNav');
+      window.addEventListener('mousemove', _switchToMouseNavListener);
+      isKeyboardNavActive = true;
+    }
+  }
+  return {
+    getIsKeyboardNavActive: () => isKeyboardNavActive,
+    useMouseNav,
+    useKeyboardNav,
+  };
+})();
 
 // Simple class for managing navigation state for a list or grid of items.
 class NavigatableList {
@@ -99,9 +143,9 @@ class NavigatableList {
       };
       
       // Add listeners for mouse events.
-      item.elem.addEventListener('click', () => {
+      item.elem.addEventListener('click', event => {
         this.setActiveItem(item.index, false);
-        item.action();
+        item.action(event);
       });
       item.elem.addEventListener('mouseenter', () => {
         this.setActiveItem(item.index, false);
@@ -170,100 +214,829 @@ class NavigatableList {
   }
 }
 
-/**
- * @param {string} selectors
- * @param {ParentNode} [parent]
- */
-function requireElem(selectors, parent) {
-  const elem = (parent || document).querySelector(selectors);
-  if (!elem) throw new Error(`Unable to find element: ${selectors}`);
-  return /** @type {HTMLElement} */(elem);
+const menuScreenTemplate = /** @type {HTMLTemplateElement} */(requireElem('#menuScreenTemplate'));
+const gridScreenTemplate = /** @type {HTMLTemplateElement} */(requireElem('#gridScreenTemplate'));
+const detailScreenTemplate = /** @type {HTMLTemplateElement} */(requireElem('#detailScreenTemplate'));
+const pinScreenTemplate = /** @type {HTMLTemplateElement} */(requireElem('#pinScreenTemplate'));
+const playerScreenTemplate = /** @type {HTMLTemplateElement} */(requireElem('#playerScreenTemplate'));
+
+/** @type {Screen[]} */
+const screens = [];
+
+class Screen {
+  /**
+   * @param {HTMLElement} elem 
+   */
+  constructor(elem) {
+    this.elem = elem;
+    this.transitionAnimation = new Animation(new KeyframeEffect(
+      elem,
+      {opacity: [0, 1]},
+      {
+        duration: 200,
+        easing: 'ease-out',
+        // NOTE: Do not use fill: 'forward' or 'both' as the opacity gets stuck at 99% instead of
+        // 100% in Chrome.
+      }
+    ));
+    this.transitionAnimationIsReversed = false;
+    this.isShown = false;
+    this.isClosed = false;
+  }
+  
+  #playTransitionAnimationForward() {
+    if (this.transitionAnimationIsReversed) {
+      this.transitionAnimation.reverse();
+      this.transitionAnimationIsReversed = false;
+    }
+    else {
+      this.transitionAnimation.play();
+    }
+  }
+  #playTransitionAnimationBackward() {
+    if (this.transitionAnimationIsReversed) {
+      this.transitionAnimation.play();
+    }
+    else {
+      this.transitionAnimation.reverse();
+      this.transitionAnimationIsReversed = true;
+    }
+  }
+  
+  /**
+   * @param {KeyboardEvent} event
+   * @param {string | undefined} keyAction
+   * @returns {0|1|2}
+   */
+  handleKey(event, keyAction) {
+    return 0;
+  }
+  
+  /**
+   * @returns {this}
+   */
+  show() {
+    if (this.isShown) return this;
+    if (this.isClosed) throw new Error(`Cannot show a screen that has been closed.`);
+    document.body.appendChild(this.elem);
+    
+    const index = screens.indexOf(this);
+    if (index > 0) {
+      screens.splice(index, 1);
+    }
+    screens.unshift(this);
+    this.elem.inert = false;
+    if (screens.length > 1) {
+      screens[1].elem.inert = true;
+    }
+    
+    if (screens.length > 0) {
+      this.#playTransitionAnimationForward();
+    }
+    this.isShown = true;
+    
+    // TODO: Hack to auto close Pin screen
+    if (screens[1] instanceof PinScreen) {
+      const pinScreen = screens[1];
+      this.transitionAnimation.addEventListener('finish', () => {
+        pinScreen.close();
+      });
+    }
+    
+    return this;
+  }
+  
+  hide() {
+    if (screens.length === 1) return;
+    if (!this.isShown) return;
+    const index = screens.indexOf(this);
+    if (index === -1) return;
+    screens.splice(index, 1);
+    
+    this.elem.inert = true;
+    if (index === 0 && screens.length > 0) {
+      screens[0].elem.inert = false;
+    }
+    
+    this.isShown = false;
+    
+    if (!this.transitionAnimation.currentTime) {
+      return;
+    }
+    
+    this.#playTransitionAnimationBackward();
+    
+    // TODO: Hack to auto close Pin screen
+    if (screens[0] instanceof PinScreen) {
+      screens[0].close();
+    }
+    
+    return true;
+  }
+  
+  close() {
+    if (screens.length === 1) return;
+    this.isClosed = true;
+    const didPlayAnimation = this.hide();
+    if (didPlayAnimation) {
+      this.transitionAnimation.addEventListener('finish', () => {
+        this.elem.remove();
+      });
+    }
+    else {
+      this.elem.remove();
+    }
+  }
 }
 
-const errorAlertElem = requireElem('#errorAlert');
-const gridWindowElem = requireElem('#gridWindow');
-const detailWindowElem = requireElem('#detailWindow');
-const backButtonElem = requireElem('#backButton');
-const playButtonElem = requireElem('#playButton');
-const detailBackgroundImgElem = /** @type {HTMLImageElement} */(requireElem('#detailBackgroundImgContainer img'));
-const detailLogoElem = /** @type {HTMLImageElement} */(requireElem('#detailLogo'));
-const ratingImgElems = /** @type {HTMLImageElement[]} */(Array.from(document.getElementsByName('ratingImg')));
-const closedCaptionsImgElem = /** @type {HTMLImageElement} */(requireElem('#closedCaptionsImg'));
-const movieYearElems = Array.from(document.getElementsByName('movieYear'));
-const runtimeElems = Array.from(document.getElementsByName('runtime'));
-const generesElems = Array.from(document.getElementsByName('generes'));
-const detailTopPanelDesc = requireElem('#detailTopPanelDesc');
-const movieTitleElem = requireElem('#movieTitle');
-const directorsElem = requireElem('#directors');
-const starringElem = requireElem('#starring');
-const starringContainerElem = /** @type {HTMLElement} */(starringElem.parentElement);
-const starTemplate = /** @type {HTMLTemplateElement} */(starringContainerElem.getElementsByTagName('TEMPLATE')[0]);
-const gridElem = requireElem('#grid');
-const gridItemTemplate = /** @type {HTMLTemplateElement} */(gridElem.getElementsByTagName('TEMPLATE')[0]);
+/**
+ * @typedef MenuItem
+ * @property {string} title
+ * @property {string} [imageURL]
+ * @property {(screen: Screen) => void} action
+ */
 
-/** @type {NavigatableList} */ let detailButtonsNavList;
-/** @type {NavigatableList} */ let gridNavList;
-/** @type {Movie | undefined} */ let selectedMovie;
-
-/** @type {NavController} */
-const gridWindowNavController = {
-  handleKey(key) {
-    switch (key) {
-      case 'Enter':
-        gridNavList.activeItem?.action();
-        return true;
-      case 'ArrowLeft':
-        gridNavList.move(-1, 0);
-        return true;
-      case 'ArrowRight':
-        gridNavList.move(1, 0);
-        return true;
-      case 'ArrowUp':
-        gridNavList.move(0, -1);
-        return true;
-      case 'ArrowDown':
-        gridNavList.move(0, 1);
-        return true;
+class MenuScreen extends Screen {
+  /**
+   * @param {MenuItem[]} menuItems
+   */
+  constructor(menuItems) {
+    const frag = /** @type {DocumentFragment} */(menuScreenTemplate.content.cloneNode(true));
+    const screenElem = requireElem('main', frag);
+    const gridElem = requireElem('.grid', screenElem);
+    const gridItemTemplate = /** @type {HTMLTemplateElement} */(gridElem.getElementsByTagName('TEMPLATE')[0]);
+    
+    /** @type {NavListItemRaw[]} */
+    const navItems = [];
+    for (const menuItem of menuItems) {
+      const gridItemNode = /** @type {DocumentFragment} */(gridItemTemplate.content.cloneNode(true));
+      const gridItemElem = requireElem('.gridItem', gridItemNode);
+      const gridItemTextElem = requireElem('.gridItemText', gridItemNode);
+      const gridItemImgElem = /**@type {HTMLImageElement} */(requireElem('.gridItemImg', gridItemNode));
+      
+      gridElem.style.gridTemplateColumns = `repeat(${menuItems.length}, 1fr)`;
+      
+      gridItemTextElem.innerText = menuItem.title;
+      
+      if (menuItem.imageURL) {
+        gridItemImgElem.src = menuItem.imageURL;
+      }
+      else {
+        gridItemImgElem.remove();
+      }
+      
+      gridElem.appendChild(gridItemElem);
+      navItems.push({
+        elem: gridItemElem,
+        action: () => menuItem.action(this),
+      });
     }
-    return false;
+    
+    const navList = new NavigatableList(navItems);
+    navList.setActiveItem(0, false);
+    
+    super(screenElem);
+    this.navList = navList;
   }
-};
-/** @type {NavController} */
-const detailWindowNavController = {
-  handleKey(key) {
-    switch (key) {
-      case 'Enter':
-        detailButtonsNavList.activeItem?.action();
-        return true;
-      case 'ArrowLeft':
-        detailButtonsNavList.move(-1, 0);
-        return true;
-      case 'ArrowRight':
-        detailButtonsNavList.move(1, 0);
-        return true;
-      case 'ArrowUp':
-        detailWindowElem.scrollTo({
+  
+  /**
+   * @param {KeyboardEvent} event
+   * @param {string | undefined} keyAction
+   */
+  handleKey(event, keyAction) {
+    switch (keyAction) {
+      case 'BACK':
+        if (event.repeat) return 2;
+        this.close();
+        return 1;
+      case 'SELECT':
+        if (event.repeat) return 2;
+        this.navList.activeItem?.action(event);
+        return 1;
+      case 'LEFT':
+        this.navList.move(-1, 0);
+        return 1;
+      case 'RIGHT':
+        this.navList.move(1, 0);
+        return 1;
+    }
+    return super.handleKey(event, keyAction);
+  }
+}
+
+class GridScreen extends Screen {
+  /**
+   * @param {MenuItem[]} menuItems
+   */
+  constructor(menuItems) {
+    const frag = /** @type {DocumentFragment} */(gridScreenTemplate.content.cloneNode(true));
+    const screenElem = requireElem('main', frag);
+    const gridElem = requireElem('.grid', screenElem);
+    const gridItemTemplate = /** @type {HTMLTemplateElement} */(gridElem.getElementsByTagName('TEMPLATE')[0]);
+    
+    gridElem.style.gridTemplateColumns = `repeat(${GRID_NUM_COLUMNS}, 1fr)`;
+    
+    /** @type {NavListItemRaw[]} */
+    const navItems = [];
+    
+    menuItems.unshift({
+      title: 'Back',
+      action: () => this.close(),
+    });
+    for (const menuItem of menuItems) {
+      const gridItemNode = /** @type {DocumentFragment} */(gridItemTemplate.content.cloneNode(true));
+      const gridItemElem = requireElem('.gridItem', gridItemNode);
+      const gridItemTextElem = requireElem('.gridItemText', gridItemNode);
+      const gridItemImgElem = /**@type {HTMLImageElement} */(requireElem('.gridItemImg', gridItemNode));
+      
+      // TODO: hack
+      if (menuItem === menuItems[0]) {
+        const template = document.createElement('template');
+        template.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 122.88 108.06"><path d="M63.94,24.28a14.28,14.28,0,0,0-20.36-20L4.1,44.42a14.27,14.27,0,0,0,0,20l38.69,39.35a14.27,14.27,0,0,0,20.35-20L48.06,68.41l60.66-.29a14.27,14.27,0,1,0-.23-28.54l-59.85.28,15.3-15.58Z"/></svg>';
+        const svgElem = requireElem('svg', template.content);
+        gridItemTextElem.insertAdjacentElement('afterend', svgElem);
+        gridItemTextElem.remove();
+        gridItemImgElem.remove();
+      }
+      
+      gridItemTextElem.innerText = menuItem.title;
+      
+      if (menuItem.imageURL) {
+        gridItemImgElem.src = menuItem.imageURL;
+      }
+      else {
+        gridItemImgElem.remove();
+      }
+      
+      gridElem.appendChild(gridItemElem);
+      navItems.push({
+        elem: gridItemElem,
+        action: () => menuItem.action(this)
+      });
+    }
+    
+    const navList = new NavigatableList(navItems);
+    navList.setActiveItem(0, false);
+    
+    super(screenElem);
+    this.navList = navList;
+  }
+  
+  /**
+   * @param {KeyboardEvent} event
+   * @param {string | undefined} keyAction
+   */
+  handleKey(event, keyAction) {
+    switch (keyAction) {
+      case 'BACK':
+        if (event.repeat) return 2;
+        this.close();
+        return 1;
+      case 'SELECT':
+        if (event.repeat) return 2;
+        this.navList.activeItem?.action(event);
+        return 1;
+      case 'LEFT':
+        this.navList.move(-1, 0);
+        return 1;
+      case 'RIGHT':
+        this.navList.move(1, 0);
+        return 1;
+      case 'UP':
+        this.navList.move(0, -1);
+        return 1;
+      case 'DOWN':
+        this.navList.move(0, 1);
+        return 1;
+    }
+    return super.handleKey(event, keyAction);
+  }
+}
+
+class DetailScreen extends Screen {
+  /**
+   * @param {Movie} movie 
+   */
+  constructor(movie) {
+    const frag = /** @type {DocumentFragment} */(detailScreenTemplate.content.cloneNode(true));
+    const screenElem = requireElem('main', frag);
+    
+    const backButtonElem = requireElem('.backButton', screenElem);
+    const playButtonElem = requireElem('.playButton', screenElem);
+    const detailBackgroundImgElem = /** @type {HTMLImageElement} */(requireElem('.detailBackgroundImgContainer img', screenElem));
+    const detailLogoElem = /** @type {HTMLImageElement} */(requireElem('.detailLogo', screenElem));
+    const ratingImgElems = /** @type {HTMLImageElement[]} */(Array.from(screenElem.querySelectorAll('.ratingImg')));
+    const closedCaptionsImgElem = /** @type {HTMLImageElement} */(requireElem('.closedCaptionsImg', screenElem));
+    const movieYearElems = /** @type {HTMLElement[]} */(Array.from(screenElem.querySelectorAll('.movieYear')));
+    const runtimeElems = /** @type {HTMLElement[]} */(Array.from(screenElem.querySelectorAll('.runtime')));
+    const generesElems = /** @type {HTMLElement[]} */(Array.from(screenElem.querySelectorAll('.generes')));
+    const detailTopPanelDesc = requireElem('.detailTopPanelDesc', screenElem);
+    const movieTitleElem = requireElem('.movieTitle', screenElem);
+    const directorsElem = requireElem('.directors', screenElem);
+    const starringElem = requireElem('.starring', screenElem);
+    const starringContainerElem = /** @type {HTMLElement} */(starringElem.parentElement);
+    const starTemplate = /** @type {HTMLTemplateElement} */(starringContainerElem.getElementsByTagName('TEMPLATE')[0]);
+    
+    detailBackgroundImgElem.src = movie.keyartURL;
+    detailLogoElem.alt = movie.title;
+    detailLogoElem.src = movie.logoURL;
+    
+    for (const imgElem of [detailLogoElem, detailBackgroundImgElem]) {
+      if (!imgElem.complete) {
+        imgElem.classList.add('loading');
+        imgElem.addEventListener('load',  () => imgElem.classList.remove('loading'));
+        imgElem.addEventListener('error', () => imgElem.classList.remove('loading'));
+      }
+    }
+    
+    ratingImgElems.forEach(x => {
+      const url = movie.rating? RATING_IMG_URL_DICT[movie.rating] : '';
+      x.src = url;
+      x.alt = movie.rating;
+      if (!url) x.style.height = 'auto';
+    });
+    closedCaptionsImgElem.style.display = movie.hasSubtitles? '' : 'none';
+    movieYearElems.forEach(x => (x.innerText = movie.year));
+    runtimeElems.forEach(x => (x.innerText =
+    (movie.runtimeMinutes >= 60? Math.floor(movie.runtimeMinutes / 60).toString() + 'h ' : '') +
+    (movie.runtimeMinutes % 60).toString() + 'm'
+    ));
+    generesElems.forEach(x => (x.innerText = movie.genres.join(', ')));
+    detailTopPanelDesc.innerText = movie.plot;
+    movieTitleElem.innerText = movie.title;
+    directorsElem.innerText = movie.directorNames.join(', ');
+    
+    for (const child of Array.from(starringContainerElem.children)) {
+      if (child !== starringElem) {
+        child.remove();
+      }
+    }
+    
+    const numStars = Math.min(movie.actorNames?.length || 0, 6);
+    for (let i = 0; i < numStars; ++i) {
+      const starNode = /** @type {DocumentFragment} */(starTemplate.content.cloneNode(true));
+      requireElem('p', starNode).innerText = movie.actorNames[i];
+      starringContainerElem.appendChild(starNode);
+    }
+    
+    const navList = new NavigatableList([{
+      elem: backButtonElem,
+      action: () => this.close()
+    }, {
+      elem: playButtonElem,
+      action: () => movie.videoFilepath && playVideo(movie.videoFilepath)
+    }]);
+    navList.setActiveItem(1, false);
+    
+    super(screenElem);
+    this.navList = navList;
+  }
+  
+  /**
+   * @param {KeyboardEvent} event
+   * @param {string | undefined} keyAction
+   */
+  handleKey(event, keyAction) {
+    switch (keyAction) {
+      case 'BACK':
+        if (event.repeat) return 2;
+        this.close();
+        return 1;
+      case 'SELECT':
+        if (event.repeat) return 2;
+        this.navList.activeItem?.action(event);
+        return 1;
+      case 'LEFT':
+        this.navList.move(-1, 0);
+        return 1;
+      case 'RIGHT':
+        this.navList.move(1, 0);
+        return 1;
+      case 'UP':
+        if (event.repeat) return 2;
+        this.elem.scrollTo({
           behavior: 'smooth',
           top: 0
         });
-        return true;
-      case 'ArrowDown':
-        detailWindowElem.scrollTo({
+        return 1;
+      case 'DOWN':
+        if (event.repeat) return 2;
+        this.elem.scrollTo({
           behavior: 'smooth',
-          top: detailWindowElem.scrollHeight
+          top: this.elem.scrollHeight
         });
-        return true;
-      case 'Escape':
-        hideDetailWindow();
-        return true;
+        return 1;
     }
-    return false;
+    return super.handleKey(event, keyAction);
   }
-};
-let activeNavController = gridWindowNavController;
+}
+
+class PinScreen extends Screen {
+  /**
+   * @param {string} pin 
+   * @param {(screen: Screen) => void} action 
+   */
+  constructor(pin, action) {
+    if (pin.length === 0) throw new Error(`Pin cannot be empty.`);
+    const frag = /** @type {DocumentFragment} */(pinScreenTemplate.content.cloneNode(true));
+    const screenElem = requireElem('main', frag);
+    const backButtonElem = requireElem('.pinBack', frag);
+    const pinContainerElem = requireElem('.pinContainer', screenElem);
+    const inputCharTemplate = /** @type {HTMLTemplateElement} */(pinContainerElem.getElementsByTagName('TEMPLATE')[0]);
+    
+    const pinCharInfos = [];
+    for (let i = 0; i < pin.length; ++i) {
+      const inputCharFrag = /** @type {DocumentFragment} */(inputCharTemplate.content.cloneNode(true));
+      const pinCharElem = requireElem('.pinChar', inputCharFrag);
+      const badAnimationDelay = 250 + (i * Math.max(50, 200 / pin.length));
+      pinCharInfos.push({
+        elem: pinCharElem,
+        badAnimationDelay,
+        badAnimation: new Animation(new KeyframeEffect(
+          requireElem('.dot', pinCharElem),
+          {opacity: [1, 0]},
+          {
+            duration: 200,
+            easing: 'ease-out',
+            fill: 'backwards',
+            delay: badAnimationDelay
+          }
+        ))
+      });
+      pinContainerElem.appendChild(inputCharFrag);
+    }
+    
+    const navList = new NavigatableList([{
+      elem: backButtonElem,
+      action: () => this.close()
+    }].concat(pinCharInfos.map(x => ({
+      elem: x.elem,
+      action: () => null
+    }))));
+    navList.setActiveItem(1);
+    
+    super(screenElem);
+    this.pin = pin;
+    this.pinInputStr = '';
+    this.navList = navList;
+    this.pinCharInfos = pinCharInfos;
+    this.action = action;
+  }
+  
+  /** @param {string} char */
+  addPinChar(char) {
+    this.pinInputStr += char;
+    
+    if (this.pinInputStr.length === 1) {
+      for (const pinCharInfo of this.pinCharInfos) {
+        if (pinCharInfo.badAnimation.playState === 'running') {
+          pinCharInfo.badAnimation.currentTime = Math.max(
+            pinCharInfo.badAnimationDelay,
+            Number(pinCharInfo.badAnimation.currentTime)
+          );
+        }
+      }
+    }
+    
+    this.pinCharInfos[this.pinInputStr.length - 1].elem.classList.add('filled');
+    this.pinCharInfos[this.pinInputStr.length - 1].elem.classList.remove('bad');
+    this.pinCharInfos[this.pinInputStr.length - 1].badAnimation.cancel();
+    this.navList.setActiveItem(1 + this.pinInputStr.length);
+    
+    if (this.pinInputStr.length < this.pin.length) return;
+    if (this.pinInputStr === this.pin) {
+      this.action(this);
+    }
+    else {
+      this.pinInputStr = '';
+      for (const pinCharInfo of this.pinCharInfos) {
+        pinCharInfo.elem.classList.remove('filled');
+        pinCharInfo.elem.classList.add('bad');
+        pinCharInfo.badAnimation.currentTime = 0;
+        pinCharInfo.badAnimation.play();
+      }
+      this.navList.setActiveItem(1);
+    }
+  }
+  removePinChar() {
+    if (this.pinInputStr.length === 0) {
+      this.navList.setActiveItem(0);
+      return;
+    }
+    this.pinInputStr = this.pinInputStr.slice(0, -1);
+    this.pinCharInfos[this.pinInputStr.length].elem.classList.remove('filled');
+    this.navList.setActiveItem(1 + this.pinInputStr.length);
+  }
+  selectPinInput() {
+    this.navList.setActiveItem(1 + this.pinInputStr.length);
+  }
+  
+  /**
+   * @param {KeyboardEvent} event
+   * @param {string | undefined} keyAction
+   */
+  handleKey(event, keyAction) {
+    switch (event.key) {
+      case 'Backspace':
+        this.removePinChar();
+        return 1;
+    }
+    switch (keyAction) {
+      case 'BACK':
+        if (event.repeat) return 2;
+        this.close();
+        return 1;
+      case 'SELECT':
+        if (event.repeat) return 2;
+        this.navList.activeItem?.action(event);
+        return 1;
+      case 'LEFT':
+        this.removePinChar();
+        return 1;
+      case 'RIGHT':
+        this.selectPinInput();
+        return 1;
+      case 'DIGIT':
+        this.addPinChar(event.key);
+        return 1;
+    }
+    return super.handleKey(event, keyAction);
+  }
+}
+
+class PlayerScreen extends Screen {
+  /**
+   * @param {string} videoFilepath 
+   */
+  constructor(videoFilepath) {
+    const frag = /** @type {DocumentFragment} */(playerScreenTemplate.content.cloneNode(true));
+    const screenElem = requireElem('main', frag);
+    const videoElem = /** @type {HTMLVideoElement} */(requireElem('video', screenElem));
+    const playerElem = /** @type {HTMLInputElement} */(requireElem('.player', screenElem));
+    const scrubberElem = /** @type {HTMLInputElement} */(requireElem('.playerScrubber', screenElem));
+    const timeElem = requireElem('.playerTime', screenElem);
+    const durationElem = requireElem('.playerDuration', screenElem);
+    const stopButtonElem = /** @type {HTMLButtonElement} */(requireElem('.playerStopButton', screenElem));
+    const previousButtonElem = /** @type {HTMLButtonElement} */(requireElem('.playerPreviousButton', screenElem));
+    const rewindButtonElem = /** @type {HTMLButtonElement} */(requireElem('.playerRewindButton', screenElem));
+    const playPauseButtonElem = /** @type {HTMLButtonElement} */(requireElem('.playerPlayPauseButton', screenElem));
+    const playSVG = requireElem('.playSVG', playPauseButtonElem);
+    const pauseSVG = requireElem('.pauseSVG', playPauseButtonElem);
+    const fastForwardButtonElem = /** @type {HTMLButtonElement} */(requireElem('.playerFastForwardButton', screenElem));
+    const nextButtonElem = /** @type {HTMLButtonElement} */(requireElem('.playerNextButton', screenElem));
+    
+    /** @param {KeyboardEvent | MouseEvent} [event] */
+    function calcPlayerSkipDurS(event) {
+      if (!event) {
+        return PLAYER_SKIP_SMALL_DURATION_S;
+      }
+      if (event.shiftKey && event.ctrlKey) {
+        return PLAYER_SKIP_LARGE_DURATION_S;
+      }
+      if (event.shiftKey || event.ctrlKey) {
+        return PLAYER_SKIP_MEDIUM_DURATION_S;
+      }
+      return PLAYER_SKIP_SMALL_DURATION_S;
+    }
+    
+    const navList = new NavigatableList([
+      {elem: stopButtonElem, action: () =>
+        this.close()
+      },
+      {elem: previousButtonElem, action: () => {
+        // noop
+      }},
+      {elem: rewindButtonElem, action: event => {
+        setVideoTime(videoElem.currentTime - calcPlayerSkipDurS(event));
+      }},
+      {elem: playPauseButtonElem, action: () => {
+        togglePlayPause();
+      }},
+      {elem: fastForwardButtonElem, action: event => {
+        setVideoTime(videoElem.currentTime + calcPlayerSkipDurS(event));
+      }},
+      {elem: nextButtonElem, action: () => {
+        // noop
+      }},
+    ]);
+    const playPauseNavListIndex = navList.items.findIndex(x => x.elem === playPauseButtonElem);
+    const allowRepeatNavItems = navList.items.filter(x => x.elem === fastForwardButtonElem || x.elem === rewindButtonElem);
+    
+    let isControlsActive = false;
+    let isScrubberActive = false;
+    /** @type {number | undefined} */
+    let controlsTimeoutID;
+    
+    /** @param {number} [durationMS] */
+    function activateControls(durationMS) {
+      isControlsActive = true;
+      playerElem.classList.remove('hiddenControls');
+      if (controlsTimeoutID) clearTimeout(controlsTimeoutID);
+      controlsTimeoutID = setTimeout(deactivateControls, durationMS || PLAYER_CONTROLS_TIMEOUT_MS);
+    }
+    function deactivateControls() {
+      isControlsActive = false;
+      playerElem.classList.add('hiddenControls');
+      unselectScrubber();
+    }
+    /** @param {number} [durationMS] */
+    function extendControls(durationMS) {
+      if (isControlsActive) {
+        activateControls(durationMS);
+      }
+    }
+    function selectScrubber() {
+      isScrubberActive = true;
+      scrubberElem.classList.add('active');
+    }
+    function unselectScrubber() {
+      isScrubberActive = false;
+      scrubberElem.classList.remove('active');
+    }
+    
+    const _setVideoElemCurrentTime = debounce(100, timeSec => {videoElem.currentTime = timeSec;});
+    /**
+     * @param {number} timeSec 
+     * @param {boolean} [skipUpdateScrubberValue] 
+     */
+    function setVideoTime(timeSec, skipUpdateScrubberValue) {
+      timeSec = Math.max(Math.min(timeSec, videoElem.duration), 0);
+      _setVideoElemCurrentTime(timeSec);
+      updateVideoTimeUI(timeSec, skipUpdateScrubberValue);
+    } 
+    /**
+     * @param {number} timeSec 
+     * @param {boolean} [skipUpdateScrubberValue] 
+     */
+    function updateVideoTimeUI(timeSec, skipUpdateScrubberValue) {
+      if (!skipUpdateScrubberValue) scrubberElem.valueAsNumber = (timeSec / videoElem.duration) * 100;
+      scrubberElem.style.setProperty('--value', `${(timeSec / videoElem.duration) * 100}%`);
+      timeElem.innerText = formatDuration(timeSec);
+    }
+    function getIsPlaying() {
+      return !videoElem.paused && !videoElem.ended;
+    }
+    function updatePlayPauseUI() {
+      if (getIsPlaying()) {
+        playSVG.style.display = 'none';
+        pauseSVG.style.display = '';
+      }
+      else {
+        playSVG.style.display = '';
+        pauseSVG.style.display = 'none';
+      }
+    }
+    function togglePlayPause() {
+      if (getIsPlaying()) {
+        videoElem.pause();
+        activateControls();
+      }
+      else {
+        void videoElem.play();
+        extendControls(PLAYER_CONTROLS_TIMEOUT_PLAY_MS);
+      }
+    }
+    
+    videoElem.src = 'file://' + videoFilepath;
+    
+    videoElem.addEventListener('loadedmetadata', () => {
+      updateVideoTimeUI(videoElem.currentTime);
+      updatePlayPauseUI();
+    });
+    videoElem.addEventListener('durationchange', () => {
+      durationElem.innerText = formatDuration(videoElem.duration);
+    });
+    videoElem.addEventListener('timeupdate', () => {
+      updateVideoTimeUI(videoElem.currentTime);
+    });
+    videoElem.addEventListener('play',  () => updatePlayPauseUI());
+    videoElem.addEventListener('pause', () => updatePlayPauseUI());
+    videoElem.addEventListener('ended', () => updatePlayPauseUI());
+    videoElem.addEventListener('click', () => togglePlayPause());
+    
+    scrubberElem.addEventListener('mousedown', () => {
+      selectScrubber();
+      extendControls();
+    });
+    scrubberElem.addEventListener('input', () => {
+      setVideoTime((scrubberElem.valueAsNumber / 100) * videoElem.duration, true);
+    });
+    scrubberElem.addEventListener('keydown', event => {
+      // Prevent all keyboard events from reaching this input.
+      event.preventDefault();
+      return false;
+    });
+    
+    playerElem.addEventListener('mousemove', debounce(100, () => activateControls()));
+    
+    super(screenElem);
+    this.videoElem = videoElem;
+    this.navList = navList;
+    this.playPauseNavListIndex = playPauseNavListIndex;
+    /** @param {NavListItem} navItem */
+    this.allowRepeatNavItems = allowRepeatNavItems;
+    this.togglePlayPause = togglePlayPause;
+    this.setVideoTime = setVideoTime;
+    this.activateControls = activateControls;
+    this.deactivateControls = deactivateControls;
+    this.extendControls = extendControls;
+    this.getIsControlsActive = () => isControlsActive;
+    this.selectScrubber = selectScrubber;
+    this.unselectScrubber = unselectScrubber;
+    this.getIsScrubberActive = () => isScrubberActive;
+    this.getIsPlaying = getIsPlaying;
+    this.calcPlayerSkipDurS = calcPlayerSkipDurS;
+    
+    activateControls();
+  }
+  
+  /**
+   * @param {KeyboardEvent} event
+   * @param {string | undefined} keyAction
+   */
+  handleKey(event, keyAction) {
+    switch (keyAction) {
+      case 'BACK':
+        if (event.repeat) return 2;
+        if (this.getIsControlsActive()) {
+          this.deactivateControls();
+        }
+        else {
+          this.activateControls();
+          this.navList.setActiveItem(this.playPauseNavListIndex);
+        }
+        return 1;
+      case 'SELECT':
+        if (this.getIsControlsActive() && navController.getIsKeyboardNavActive()) {
+          if (this.getIsScrubberActive()) {
+            if (event.repeat) return 2;
+            this.togglePlayPause();
+          }
+          else {
+            if (this.navList.activeItem) {
+              if (event.repeat && !this.allowRepeatNavItems.includes(this.navList.activeItem)) {
+                return 2;
+              }
+              this.navList.activeItem.action(event);
+            }
+          }
+          this.extendControls();
+        }
+        else {
+          if (event.repeat) return 2;
+          this.togglePlayPause();
+          this.navList.setActiveItem(this.playPauseNavListIndex);
+        }
+        return 2;
+      case 'UP':
+        this.activateControls();
+        this.selectScrubber();
+        this.navList.setActiveItem(-1, false);
+        return 2;
+      case 'DOWN':
+        if (!this.getIsControlsActive() || !navController.getIsKeyboardNavActive()) {
+          this.navList.setActiveItem(this.playPauseNavListIndex);
+        }
+        this.activateControls();
+        
+        if (this.getIsScrubberActive()) {
+          this.unselectScrubber();
+          this.navList.setActiveItem(this.playPauseNavListIndex);
+        }
+        return 1;
+      case 'LEFT':
+        if (this.getIsScrubberActive()) {
+          this.setVideoTime(this.videoElem.currentTime - this.calcPlayerSkipDurS(event));
+          this.extendControls();
+          return 2;
+        }
+        
+        if (!this.getIsControlsActive() || !navController.getIsKeyboardNavActive()) {
+          this.navList.setActiveItem(this.playPauseNavListIndex);
+        }
+        this.activateControls();
+        this.navList.move(-1, 0);
+        return 1;
+      case 'RIGHT':
+        if (this.getIsScrubberActive()) {
+          this.setVideoTime(this.videoElem.currentTime + this.calcPlayerSkipDurS(event));
+          this.extendControls();
+          return 2;
+        }
+        
+        if (!this.getIsControlsActive() || !navController.getIsKeyboardNavActive()) {
+          this.navList.setActiveItem(this.playPauseNavListIndex);
+        }
+        this.activateControls();
+        this.navList.move(1, 0);
+        return 1;
+    }
+    return super.handleKey(event, keyAction);
+  }
+}
 
 function init() {
-  hideDetailWindow();
+  const errorAlertElem = requireElem('#errorAlert');
   
   const cWindow = /** @type {CustomWindow} */(window);
   const {movieLibraryConfig} = cWindow;
@@ -316,168 +1089,59 @@ function init() {
   }
   
   if (!movieLibraryConfig.enableMouseAtStart) {
-    useKeyboardNav();
+    navController.useKeyboardNav();
   }
   
-  // Setup detail window buttons.
-  detailButtonsNavList = new NavigatableList([{
-    elem: backButtonElem,
-    action: () => hideDetailWindow()
+  new MenuScreen([{
+    title: 'Movies',
+    action: () => new GridScreen(movies.map(movie => ({
+      title: movie.title,
+      imageURL: movie.thumbURL,
+      action: () => new DetailScreen(movie).show()
+    }))).show()
   }, {
-    elem: playButtonElem,
-    action: () => selectedMovie?.videoFilepath && playVideo(selectedMovie.videoFilepath)
-  }]);
-  detailButtonsNavList.setActiveItem(1, false);
-  
-  for (const imgElem of [detailLogoElem, detailBackgroundImgElem]) {
-    imgElem.addEventListener('load',  () => imgElem.classList.remove('loading'));
-    imgElem.addEventListener('error', () => imgElem.classList.remove('loading'));
-  }
-  
-  // Populate the movie grid and setup grid navigation controls.
-  gridElem.style.gridTemplateColumns = `repeat(${GRID_NUM_COLUMNS}, 1fr)`;
-  
-  /** @type {NavListItemRaw[]} */
-  const navItems = [];
-  for (const movie of movies) {
-    const gridItemNode = /** @type {DocumentFragment} */(gridItemTemplate.content.cloneNode(true));
-    const gridItemElem = requireElem('.gridItem', gridItemNode);
-    const gridItemTextElem = requireElem('.gridItemText', gridItemNode);
-    const gridItemImgElem = /**@type {HTMLImageElement} */(requireElem('.gridItemImg', gridItemNode));
-    
-    gridItemTextElem.innerText = movie.title;
-    
-    if (movie.thumbURL) {
-      gridItemImgElem.src = movie.thumbURL;
-    }
-    else if (movie.logoURL) {
-      gridItemImgElem.src = movie.logoURL;
-      gridItemImgElem.classList.add('logo');
-      gridItemTextElem.remove();
-    }
-    else {
-      gridItemImgElem.remove();
-    }
-    
-    gridElem.appendChild(gridItemElem);
-    
-    navItems.push({
-      elem: gridItemElem,
-      action: () => selectMovie(movie)
-    });
-  }
-  
-  gridNavList = new NavigatableList(
-    navItems,
-    GRID_NUM_COLUMNS,
-    movieLibraryConfig.enableGridNavWrap
-  );
-  gridNavList.setActiveItem(0);
+    title: 'TV',
+    action: () => new PinScreen('1141', () =>
+      new GridScreen([
+        {title: 'Test1', action: () => console.log('Test1')},
+        {title: 'Test2', action: () => console.log('Test2')},
+        {title: 'Test3', action: () => console.log('Test3')},
+      ]).show()
+    ).show()
+  }]).show();
+  new PlayerScreen(
+    `C:\\Users\\Mike\\Downloads\\test.mp4`
+  ).show();
   
   // Register key listener.
   window.addEventListener('keydown', event => {
-    const wasCaught = activeNavController.handleKey(event.key);
-    if (wasCaught) {
-      useKeyboardNav();
+    const keyAction = KEY_ACTION_DICT[event.key];
+    const caughtState = screens[0]?.handleKey(event, keyAction);
+    if (caughtState) {
+      if (caughtState !== 2) {
+        navController.useKeyboardNav();
+      }
       event.preventDefault();
       return false;
     }
   });
   
-  // Remember the last active grid item.
-  // const lastGridActiveItemIndex = loadGridLastActiveItemIndex();
-  // gridNavList.setActiveItem(lastGridActiveItemIndex || 0);
-  // window.addEventListener('beforeunload', () => saveGridLastActiveItemIndex(gridNavList.activeItem?.index));
+  // Prevent any element from ever recieving focus. Prevents which key events from activating inputs.
+  window.addEventListener('focusin', event => {
+    if (event.target !== document.body) {
+      /** @type {HTMLElement} */(event.target)?.blur?.();
+    }
+  });
   
   errorAlertElem.style.display = 'none';
 }
 
-/** @param {Movie} movie */
-function populateDetailWindow(movie) {
-  detailBackgroundImgElem.src = movie.keyartURL;
-  detailLogoElem.alt = movie.title;
-  detailLogoElem.src = movie.logoURL;
-  
-  if (!detailBackgroundImgElem.complete) detailBackgroundImgElem.classList.add('loading');
-  if (!detailLogoElem.complete) detailLogoElem.classList.add('loading');
-  
-  ratingImgElems.forEach(x => {
-    x.src = movie.rating? RATING_IMG_URL_DICT[movie.rating] : '';
-    x.alt = movie.rating;
-  });
-  closedCaptionsImgElem.style.display = movie.hasSubtitles? '' : 'none';
-  movieYearElems.forEach(x => (x.innerText = movie.year));
-  runtimeElems.forEach(x => (x.innerText =
-   (movie.runtimeMinutes >= 60? Math.floor(movie.runtimeMinutes / 60).toString() + 'h ' : '') +
-   (movie.runtimeMinutes % 60).toString() + 'm'
-  ));
-  generesElems.forEach(x => (x.innerText = movie.genres.join(', ')));
-  detailTopPanelDesc.innerText = movie.plot;
-  movieTitleElem.innerText = movie.title;
-  directorsElem.innerText = movie.directorNames.join(', ');
-  
-  for (const child of Array.from(starringContainerElem.children)) {
-    if (child !== starringElem) {
-      child.remove();
-    }
-  }
-  
-  const numStars = Math.min(movie.actorNames?.length || 0, 6);
-  for (let i = 0; i < numStars; ++i) {
-    const starNode = /** @type {DocumentFragment} */(starTemplate.content.cloneNode(true));
-    requireElem('p', starNode).innerText = movie.actorNames[i];
-    starringContainerElem.appendChild(starNode);
-  }
-}
-
-function showDetailWindow() {
-  detailWindowElem.classList.remove('hidden');
-  detailWindowElem.scrollTo({top: 0, behavior: 'auto'});
-  detailButtonsNavList.setActiveItem(1, false);
-  gridWindowElem.style.pointerEvents = 'none';
-  activeNavController = detailWindowNavController;
-}
-function hideDetailWindow() {
-  detailWindowElem.classList.add('hidden');
-  detailButtonsNavList?.setActiveItem(1, false);
-  gridWindowElem.style.pointerEvents = '';
-  activeNavController = gridWindowNavController;
-}
-
-/** @param {Movie} movie */
-function selectMovie(movie) {
-  if (selectedMovie !== movie) {
-    selectedMovie = movie;
-    populateDetailWindow(selectedMovie);
-  }
-  showDetailWindow();
-}
-
 /** @param {string} filepath */
 function playVideo(filepath) {
-  const url = 'movielib.player://' + filepath;
-  console.log('Playing', url);
-  window.open(url, '_self');
-}
-
-let isKeyboardNavActive = false;
-const _switchToMouseNavListener = useMouseNav;
-function useMouseNav() {
-  if (isKeyboardNavActive) {
-    document.documentElement.classList.remove('keyboardNav');
-    document.documentElement.classList.add('mouseNav');
-    window.removeEventListener('mousemove', _switchToMouseNavListener);
-    isKeyboardNavActive = false;
-  }
-}
-function useKeyboardNav() {
-  if (!isKeyboardNavActive) {
-    // NOTE: Chrome (bug?) prevents the cursor from changing until after the first mouse event.
-    document.documentElement.classList.add('keyboardNav');
-    document.documentElement.classList.remove('mouseNav');
-    window.addEventListener('mousemove', _switchToMouseNavListener);
-    isKeyboardNavActive = true;
-  }
+  // const url = 'movielib.player://' + filepath;
+  // console.log('Playing', url);
+  // window.open(url, '_self');
+  new PlayerScreen(filepath).show();
 }
 
 // function loadGridLastActiveItemIndex() {
@@ -492,6 +1156,69 @@ function useKeyboardNav() {
 //   if (index === undefined || index < 0) return;
 //   localStorage.setItem('lastGridActiveItemIndex', index.toString());
 // }
+
+/**
+ * @param {string} selectors
+ * @param {ParentNode} [parent]
+ */
+function requireElem(selectors, parent) {
+  const elem = (parent || document).querySelector(selectors);
+  if (!elem) throw new Error(`Unable to find element: ${selectors}`);
+  return /** @type {HTMLElement} */(elem);
+}
+
+/**
+ * @template {any[]} T
+ * @param {number} delayMS 
+ * @param {(...args: T) => void} fn 
+ * @returns {(...args: T) => void}
+ */
+function debounce(delayMS, fn) {
+  let isDelayed = false;
+  /** @type {T | undefined} */
+  let pendingArgs = undefined;
+  /** @param {T} args */
+  const debounced = (...args) => {
+    if (isDelayed) {
+      pendingArgs = args;
+    }
+    else {
+      isDelayed = true;
+      setTimeout(() => {
+        isDelayed = false;
+        if (pendingArgs) {
+          const args = pendingArgs;
+          pendingArgs = undefined;
+          debounced(...args);
+        }
+      }, delayMS);
+      fn(...args);
+    }
+  };
+  return debounced;
+}
+
+const MINUTE = 60;
+const HOUR = 60 * MINUTE;
+
+/** @param {number} durationS */
+function formatDuration(durationS) {
+  let secs = Math.floor(durationS);
+  const hours = Math.floor(secs / HOUR);
+  secs -= hours * HOUR;
+  const mins = Math.floor(secs / MINUTE);
+  secs -= mins * MINUTE;
+  
+  let str = '';
+  if (hours > 0) {
+    str += hours.toString() + ':';
+    if (mins < 10) str += '0';
+  }
+  str += mins.toString() + ':';
+  if (secs < 10) str += '0';
+  str += secs;
+  return str;
+}
 
 init();
 } window.addEventListener('DOMContentLoaded', () => load());
