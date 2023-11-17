@@ -978,7 +978,7 @@ class PlayerScreen extends Screen {
       }
     }
     
-    videoElem.src = 'file://' + videoFilepath;
+    videoElem.src = /^(\.|http)/.test(videoFilepath)? videoFilepath : 'file://' + videoFilepath;
     
     videoElem.addEventListener('loadedmetadata', () => {
       updateVideoTimeUI(videoElem.currentTime);
@@ -1187,7 +1187,7 @@ function init() {
         {title: 'Test1', action: () => new PlayerScreen(`C:\\Users\\Mike\\Downloads\\test.mp4`).show()},
         {title: 'Test2', action: () => new PlayerScreen(`C:\\Users\\Mike\\Downloads\\test2.mp4`).show()},
         {title: 'Test3', action: () => new PlayerScreen(`M:\\TV\\Ambient Swim\\bumps\\bump${Math.floor(Math.random()*1521)}.mp4`).show()},
-        //{title: 'Test4', action: () => new PlayerScreen(`C:\\Users\\Mike\\Downloads\\The Office (US) (2005) - S01E01 - Pilot (1080p AMZN WEB-DL x265 LION).mkv`).show()},
+        {title: 'Test4', action: () => new PlayerScreen(`C:\\Users\\Mike\\Downloads\\The Office (US) (2005) - S01E01 - Pilot (1080p AMZN WEB-DL x265 LION).mkv`).show()},
       ]).show()
     ).show()
   }]).show();
