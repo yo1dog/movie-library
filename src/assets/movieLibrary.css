@@ -67,6 +67,9 @@ body {
   overflow-x: hidden;
   overflow-y: auto;
 }
+.screen::-webkit-scrollbar {
+  display: none;
+}
 
 .fadeAfterLoading {
   transition: opacity 100ms ease-out;

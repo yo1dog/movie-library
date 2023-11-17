@@ -211,6 +211,9 @@ class NavigatableList {
       this.activeItem.elem.classList.add('active');
       if (scroll) {
         this.activeItem.elem.scrollIntoView({
+          // Smooth scrolling momentum in Chrome stops after each scroll command, so it becomes very
+          // jumpy and lags behind.
+          //behavior: isFirefox? 'smooth' : 'instant',
           behavior: 'smooth',
           block: 'nearest',
           inline: 'nearest',
