@@ -386,7 +386,7 @@ body {
 .numpad {
   display: grid;
   justify-content: center;
-  grid-template-columns: repeat(4, minmax(auto, 75pt));
+  grid-template-columns: repeat(3, minmax(auto, 75pt));
   gap: 1vw;
 }
 .numpad .gridItem > div {

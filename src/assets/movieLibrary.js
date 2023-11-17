@@ -712,11 +712,10 @@ class PinScreen extends Screen {
     };
     
     const numpadNavList = new NavigatableList([
-      ...numpadNavListItems.slice(1, 9),
+      ...numpadNavListItems.slice(1, 10),
       numpadBackListItem,
-      numpadNavListItems[9],
       numpadNavListItems[0]
-    ], 4);
+    ], 3);
     numpadNavList.setActiveItem(0);
     
     super(screenElem);
