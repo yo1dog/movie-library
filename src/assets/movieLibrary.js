@@ -156,6 +156,7 @@ class NavigatableList {
     
     /** @type {NavListItem | undefined} */
     this.activeItem = undefined;
+    this.activeItemIsHidden = false;
   }
   
   /**
@@ -164,15 +165,20 @@ class NavigatableList {
    * @param {number} dy
    */
   move(dx, dy) {
+    if (!this.activeItem) {
+      this.setActiveItem(0);
+      return;
+    }
+    
     let index;
     if (this.enableWrap) {
-      index = (this.activeItem?.index || 0) + dx + (dy * this.numColumns);
+      index = this.activeItem.index + dx + (dy * this.numColumns);
       if (index < 0) index = 0;
       if (index > this.items.length - 1) index = this.items.length - 1;
     }
     else {
-      let x = (this.activeItem?.x || 0) + dx;
-      let y = (this.activeItem?.y || 0) + dy;
+      let x = this.activeItem.x + dx;
+      let y = this.activeItem.y + dy;
       if (x < 0) x = 0;
       if (x > this.numColumns - 1) x = this.numColumns - 1;
       if (y < 0) y = 0;
@@ -201,7 +207,7 @@ class NavigatableList {
     
     this.activeItem = newActiveItem;
     
-    if (this.activeItem) {
+    if (this.activeItem && !this.activeItemIsHidden) {
       this.activeItem.elem.classList.add('active');
       if (scroll) {
         this.activeItem.elem.scrollIntoView({
@@ -211,6 +217,15 @@ class NavigatableList {
         });
       }
     }
+  }
+  
+  hideActiveItem() {
+    this.activeItem?.elem.classList.remove('active');
+    this.activeItemIsHidden = true;
+  }
+  unhideActiveItem() {
+    this.activeItem?.elem.classList.add('active');
+    this.activeItemIsHidden = false;
   }
 }
 
@@ -455,7 +470,7 @@ class GridScreen extends Screen {
       // TODO: hack
       if (menuItem === menuItems[0]) {
         const template = document.createElement('template');
-        template.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 122.88 108.06"><path d="M63.94,24.28a14.28,14.28,0,0,0-20.36-20L4.1,44.42a14.27,14.27,0,0,0,0,20l38.69,39.35a14.27,14.27,0,0,0,20.35-20L48.06,68.41l60.66-.29a14.27,14.27,0,1,0-.23-28.54l-59.85.28,15.3-15.58Z"/></svg>';
+        template.innerHTML = '<svg class="gridItemSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 122.88 108.06"><path d="M63.94,24.28a14.28,14.28,0,0,0-20.36-20L4.1,44.42a14.27,14.27,0,0,0,0,20l38.69,39.35a14.27,14.27,0,0,0,20.35-20L48.06,68.41l60.66-.29a14.27,14.27,0,1,0-.23-28.54l-59.85.28,15.3-15.58Z"/></svg>';
         const svgElem = requireElem('svg', template.content);
         gridItemTextElem.insertAdjacentElement('afterend', svgElem);
         gridItemTextElem.remove();
@@ -643,14 +658,13 @@ class PinScreen extends Screen {
     if (pin.length === 0) throw new Error(`Pin cannot be empty.`);
     const frag = /** @type {DocumentFragment} */(pinScreenTemplate.content.cloneNode(true));
     const screenElem = requireElem('main', frag);
-    const backButtonElem = requireElem('.pinBack', frag);
-    const pinContainerElem = requireElem('.pinContainer', screenElem);
-    const inputCharTemplate = /** @type {HTMLTemplateElement} */(pinContainerElem.getElementsByTagName('TEMPLATE')[0]);
     
+    const pinContainerElem = requireElem('.pinContainer', screenElem);
+    const pinCharTemplate = /** @type {HTMLTemplateElement} */(pinContainerElem.getElementsByTagName('TEMPLATE')[0]);
     const pinCharInfos = [];
     for (let i = 0; i < pin.length; ++i) {
-      const inputCharFrag = /** @type {DocumentFragment} */(inputCharTemplate.content.cloneNode(true));
-      const pinCharElem = requireElem('.pinChar', inputCharFrag);
+      const pinCharFrag = /** @type {DocumentFragment} */(pinCharTemplate.content.cloneNode(true));
+      const pinCharElem = requireElem('.pinChar', pinCharFrag);
       const badAnimationDelay = 250 + (i * Math.max(50, 200 / pin.length));
       pinCharInfos.push({
         elem: pinCharElem,
@@ -666,24 +680,69 @@ class PinScreen extends Screen {
           }
         ))
       });
-      pinContainerElem.appendChild(inputCharFrag);
+      pinContainerElem.appendChild(pinCharElem);
     }
     
-    const navList = new NavigatableList([{
-      elem: backButtonElem,
-      action: () => this.close()
-    }].concat(pinCharInfos.map(x => ({
+    const pinNavList = new NavigatableList(pinCharInfos.map(x => ({
       elem: x.elem,
-      action: () => null
-    }))));
-    navList.setActiveItem(1);
+      action: () => {/*noop*/}
+    })));
+    pinNavList.setActiveItem(0);
+    
+    const numpadElem = requireElem('.numpad', screenElem);
+    /** @type {NavListItemRaw[]} */
+    const numpadNavListItems = [];
+    for (let digit = 0; digit < 10; ++digit) {
+      numpadNavListItems.push({
+        elem: requireElem(`.numpad${digit}`, numpadElem),
+        action: () => this.addPinChar(digit.toString())
+      });
+    }
+    /** @type {NavListItemRaw} */
+    const numpadBackListItem = {
+      elem: requireElem(`.numpadBack`, numpadElem),
+      action: () => {
+        if (this.pinInputStr.length === 0) {
+          this.close();
+        }
+        else {
+          this.removePinChar();
+        }
+      }
+    };
+    
+    const numpadNavList = new NavigatableList([
+      ...numpadNavListItems.slice(1, 9),
+      numpadBackListItem,
+      numpadNavListItems[9],
+      numpadNavListItems[0]
+    ], 4);
+    numpadNavList.setActiveItem(0);
     
     super(screenElem);
     this.pin = pin;
     this.pinInputStr = '';
-    this.navList = navList;
+    this.pinNavList = pinNavList;
+    this.numpadNavList = numpadNavList;
     this.pinCharInfos = pinCharInfos;
     this.action = action;
+    
+    this.isNumpadFocused = true;
+    this.focusPin();
+  }
+  
+  focusNumpad() {
+    if (this.isNumpadFocused) return;
+    this.pinNavList.hideActiveItem();
+    this.numpadNavList.unhideActiveItem();
+    this.isNumpadFocused = true;
+  }
+  focusPin() {
+    if (!this.isNumpadFocused) return;
+    this.pinNavList.unhideActiveItem();
+    this.numpadNavList.hideActiveItem();
+    this.numpadNavList.setActiveItem(-1);
+    this.isNumpadFocused = false;
   }
   
   /** @param {string} char */
@@ -701,10 +760,10 @@ class PinScreen extends Screen {
       }
     }
     
-    this.pinCharInfos[this.pinInputStr.length - 1].elem.classList.add('filled');
-    this.pinCharInfos[this.pinInputStr.length - 1].elem.classList.remove('bad');
-    this.pinCharInfos[this.pinInputStr.length - 1].badAnimation.cancel();
-    this.navList.setActiveItem(1 + this.pinInputStr.length);
+    this.pinCharInfos[this.pinInputStr.length - 1]?.elem.classList.add('filled');
+    this.pinCharInfos[this.pinInputStr.length - 1]?.elem.classList.remove('bad');
+    this.pinCharInfos[this.pinInputStr.length - 1]?.badAnimation.cancel();
+    this.pinNavList.setActiveItem(this.pinInputStr.length);
     
     if (this.pinInputStr.length < this.pin.length) return;
     if (this.pinInputStr === this.pin) {
@@ -718,20 +777,17 @@ class PinScreen extends Screen {
         pinCharInfo.badAnimation.currentTime = 0;
         pinCharInfo.badAnimation.play();
       }
-      this.navList.setActiveItem(1);
+      this.pinNavList.setActiveItem(0);
     }
   }
   removePinChar() {
     if (this.pinInputStr.length === 0) {
-      this.navList.setActiveItem(0);
+      this.pinNavList.setActiveItem(0);
       return;
     }
     this.pinInputStr = this.pinInputStr.slice(0, -1);
     this.pinCharInfos[this.pinInputStr.length].elem.classList.remove('filled');
-    this.navList.setActiveItem(1 + this.pinInputStr.length);
-  }
-  selectPinInput() {
-    this.navList.setActiveItem(1 + this.pinInputStr.length);
+    this.pinNavList.setActiveItem(this.pinInputStr.length);
   }
   
   /**
@@ -742,7 +798,7 @@ class PinScreen extends Screen {
     switch (event.key) {
       case 'Backspace':
         this.removePinChar();
-        return 1;
+        return 2;
     }
     switch (keyAction) {
       case 'BACK':
@@ -751,15 +807,31 @@ class PinScreen extends Screen {
         return 2;
       case 'SELECT':
         if (event.repeat) return 2;
-        this.navList.activeItem?.action(event);
+        if (this.isNumpadFocused) {
+          this.numpadNavList.activeItem?.action(event);
+        }
+        else {
+          this.focusNumpad();
+        }
         return 1;
       case 'LEFT':
-        this.removePinChar();
+        this.focusNumpad();
+        this.numpadNavList.move(-1, 0);
         return 1;
       case 'RIGHT':
-        this.selectPinInput();
+        this.focusNumpad();
+        this.numpadNavList.move(1, 0);
+        return 1;
+      case 'UP':
+        this.focusNumpad();
+        this.numpadNavList.move(0, -1);
+        return 1;
+      case 'DOWN':
+        this.focusNumpad();
+        this.numpadNavList.move(0, 1);
         return 1;
       case 'DIGIT':
+        this.focusPin();
         this.addPinChar(event.key);
         return 1;
     }

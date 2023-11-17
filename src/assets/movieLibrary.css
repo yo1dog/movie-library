@@ -124,7 +124,8 @@ body {
 .mouseNav .gridItem:hover > div::after {
   border-color: rgba(249,249,249,0.8);
 }
-.gridItem span {
+
+.gridItemText {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -138,7 +139,7 @@ body {
   overflow: hidden;
 }
 
-.gridItem svg {
+.gridItemSvg {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -334,56 +335,38 @@ body {
   margin-bottom: 8px;
 }
 
+.pinScreen .screenBody {
+  display: flex;
+  flex-direction: column;
+  align-content: center;
+  justify-content: center;
+  align-items: center;
+  justify-items: center;
+  gap: 4vw;
+}
+
 .pinContainer {
   display: flex;
   justify-content: center;
   align-items: center;
   width: 100%;
-  height: 100%;
-  gap: 2%;
+  gap: 3vw;
 }
 .pinChar {
   width: 100%;
-  max-width: 8vw;
+  max-width: 75pt;
   pointer-events: none;
 }
 .pinChar > div {
   aspect-ratio: 1;
-  overflow: hidden;
-  position: relative;
-  transform: scale(1);
   background: linear-gradient(rgb(18, 19, 23), rgba(30, 31, 42, 0));
-  /* background: linear-gradient(rgb(30, 31, 42), rgb(48, 50, 62)); */
-  background-size: cover;
-  box-shadow: rgba(0,0,0,0.69) 0 26px 30px -10px, rgba(0,0,0,0.73) 0 16px 10px -10px;
-  transition-property: transform, box-shadow;
   display: flex;
   justify-content: center;
   align-items: center;
 }
-.pinChar > div::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-width: 5px;
-  border-style: solid;
-  border-color: transparent;
-  transition-property: border-color;
-}
 .pinChar > div,
 .pinChar > div::after {
   border-radius: 25%;
-  transition-duration: 300ms;
-  transition-timing-function: ease-out;
-}
-.pinChar.active > div {
-  box-shadow: rgba(0,0,0,0.8) 0 40px 58px -16px, rgba(0,0,0,0.72) 0 30px 22px -10px;
-  transform: scale(1.05);
-  transition-duration: 300ms;
-  transition-timing-function: ease-out;
-}
-.pinChar.active > div::after {
-  border-color: rgb(249,249,249);
 }
 
 .pinChar .dot {
@@ -400,17 +383,26 @@ body {
   background-color: rgb(249,50,50);
 }
 
-.pinChar.pinBack {
-  cursor: pointer;
-  pointer-events: unset;
+.numpad {
+  display: grid;
+  justify-content: center;
+  grid-template-columns: repeat(4, minmax(auto, 75pt));
+  gap: 1vw;
 }
-.pinChar.pinChar.pinBack > div {
-  background: linear-gradient(rgb(48, 50, 62), rgb(30, 31, 42));
+.numpad .gridItem > div {
+  aspect-ratio: 1;
 }
-.pinChar svg {
-  width: 50%;
-  height: 50%;
-  fill: currentColor;
+.numpad .gridItem > div,
+.numpad .gridItem > div::after {
+  border-radius: 25%;
+}
+.numpad .gridItemText {
+  font-size: 20pt;
+}
+.numpad .gridItemSvg {
+  padding: 0;
+  height: 20pt;
+  margin: auto;
 }
 
 .playerScreen .screenBody {
