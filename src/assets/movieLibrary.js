@@ -315,7 +315,10 @@ class Screen {
     
     this.elem.inert = true;
     if (index === 0 && screens.length > 0) {
-      screens[0].elem.inert = false;
+      // Should never happen, but ensure hidden and closed screens never become uninert.
+      if (screens[0].isShown && !screens[0].isClosed) {
+        screens[0].elem.inert = false;
+      }
     }
     
     this.isShown = false;
@@ -1113,8 +1116,14 @@ function init() {
   
   // Register key listener.
   window.addEventListener('keydown', event => {
+    // Should never happen, but ensure hidden and closed screens are never sent keys.
+    const screen = screens[0];
+    if (!screen || !screen.isShown || screen.isClosed) {
+      return;
+    }
+    
     const keyAction = KEY_ACTION_DICT[event.key];
-    const caughtState = screens[0]?.handleKey(event, keyAction);
+    const caughtState = screen.handleKey(event, keyAction);
     if (caughtState) {
       if (caughtState !== 2) {
         navController.useKeyboardNav();
@@ -1124,7 +1133,7 @@ function init() {
     }
   });
   
-  // Prevent any element from ever recieving focus. Prevents which key events from activating inputs.
+  // Prevent any element from ever recieving focus. This prevents inputs from consuming key events.
   window.addEventListener('focusin', event => {
     if (event.target !== document.body) {
       /** @type {HTMLElement} */(event.target)?.blur?.();
