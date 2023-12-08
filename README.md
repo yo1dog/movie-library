@@ -15,6 +15,7 @@ A super simple frontend for browsing movies.
 
 https://user-images.githubusercontent.com/1504597/218681879-0660249c-68f3-4276-b63a-0b10d7962ae0.mp4
 
+For ASS subtitle rendering to work in Chrome, you must launch Chrome with the `--allow-file-access-from-files` flag.
 
 ## Setup
 

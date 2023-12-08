@@ -1,0 +1,121 @@
+[Script Info]
+Title: English (US)
+Original Script: NIS  [http://www.crunchyroll.com/user/NIS]
+Original Translation: 
+Original Editing: 
+Original Timing: 
+Synch Point: 
+Script Updated By: 
+Update Details: 
+ScriptType: v4.00+
+Collisions: Normal
+PlayResX: 1920
+PlayResY: 1080
+Timer: 0.0000
+WrapStyle: 2
+
+[V4+ Styles]
+Format: Name,Fontname,Fontsize,PrimaryColour,SecondaryColour,OutlineColour,BackColour,Bold,Italic,Underline,Strikeout,ScaleX,ScaleY,Spacing,Angle,BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,Encoding
+Style: Default,Arial,20,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,2,2,2,0010,0010,0010,0
+Style: OS,Arial,22,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,-1,0,0,0,100,100,0,0,1,2,2,8,0072,0072,0025,0
+Style: ToradoraDefault,Arial,65,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,4,0,2,0065,0065,0075,0
+Style: LyricsDefault,Arial,65,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,-1,0,0,100,100,0,0,1,4,0,8,0065,0065,0075,0
+Style: ImagetextBD,Arial,65,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,4,0,8,0065,0065,0075,0
+Style: DefaultDVD,Trebuchet MS,32,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,-1,0,0,0,85,100,0,0,1,2,2,2,0065,0065,0036,1
+Style: Default2DVD,Trebuchet MS,32,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,-1,0,0,0,85,100,0,0,1,2,2,2,0065,0065,0051,1
+Style: LyricsromajiDVD,Trebuchet MS,32,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,-1,0,0,85,100,0,0,1,2,2,8,0065,0065,0036,1
+Style: ImagetextDVD,Trebuchet MS,32,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,-1,0,0,0,85,100,0,0,1,2,2,8,0065,0065,0036,1
+
+[Events]
+Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text
+Dialogue: 0,0:00:19.14,0:00:21.69,ImagetextBD,Caption,0000,0000,0000,,"Fluffy bangs soften your face and\Nallow you to softly capture her heart."
+Dialogue: 0,0:00:29.52,0:00:31.99,ImagetextBD,Caption,0000,0000,0000,,Mold
+Dialogue: 0,0:01:23.78,0:01:26.41,LyricsDefault,,0000,0000,0000,,pure pureparato
+Dialogue: 0,0:01:23.78,0:01:26.41,ToradoraDefault,,0000,0000,0000,,Pre! Preparation!
+Dialogue: 0,0:01:26.41,0:01:29.30,LyricsDefault,,0000,0000,0000,,tsuyoku nanka naikedo
+Dialogue: 0,0:01:26.41,0:01:29.30,ToradoraDefault,,0000,0000,0000,,I might not be very strong,
+Dialogue: 0,0:01:29.79,0:01:32.46,LyricsDefault,,0000,0000,0000,,pure pureparedo
+Dialogue: 0,0:01:29.79,0:01:32.46,ToradoraDefault,,0000,0000,0000,,Pre! Pre-parade!
+Dialogue: 0,0:01:32.46,0:01:35.14,LyricsDefault,,0000,0000,0000,,itsuka kimiwo tsukamaeru
+Dialogue: 0,0:01:32.46,0:01:35.14,ToradoraDefault,,0000,0000,0000,,but I'm gonna catch you\None of these days.
+Dialogue: 0,0:01:35.76,0:01:40.17,LyricsDefault,,0000,0000,0000,,pu re purepa pu re purepa pu re purepa
+Dialogue: 0,0:01:40.17,0:01:41.50,LyricsDefault,,0000,0000,0000,,warete baribari
+Dialogue: 0,0:01:40.17,0:01:41.50,ToradoraDefault,,0000,0000,0000,,Cracking and crumbling.
+Dialogue: 0,0:01:41.50,0:01:46.07,LyricsDefault,,0000,0000,0000,,pu re purepa pu re purepa pu re purepa
+Dialogue: 0,0:01:47.44,0:01:53.42,LyricsDefault,,0000,0000,0000,,yudan shitara sono yubi\Nchiku chiku atakku kakugo shite
+Dialogue: 0,0:01:47.44,0:01:53.42,ToradoraDefault,,0000,0000,0000,,Let your guard down and expect\Na poking attack from my fingers.
+Dialogue: 0,0:01:53.42,0:01:59.06,LyricsDefault,,0000,0000,0000,,chiisai kedo hasamuno\Nmijinko mitai na anata
+Dialogue: 0,0:01:53.42,0:01:59.06,ToradoraDefault,,0000,0000,0000,,I may be small, but I can still\Npluck you like a flea.
+Dialogue: 0,0:01:59.70,0:02:05.61,LyricsDefault,,0000,0000,0000,,hoshiinowa purasuchikkuna haato\N(purasu purasu dakedo mainasu)
+Dialogue: 0,0:01:59.70,0:02:05.61,ToradoraDefault,,0000,0000,0000,,I'm longing for a plastic heart.\N(Plus, plus, somehow a minus)
+Dialogue: 0,0:02:05.61,0:02:12.88,LyricsDefault,,0000,0000,0000,,demo soreja tsumaranai\Nsokoni kizuita monogachi
+Dialogue: 0,0:02:05.61,0:02:12.88,ToradoraDefault,,0000,0000,0000,,But the one who realizes how\Nboring that'd be will win.
+Dialogue: 0,0:02:15.61,0:02:18.58,LyricsDefault,,0000,0000,0000,,koiwa amakute nigaimono
+Dialogue: 0,0:02:15.61,0:02:18.58,ToradoraDefault,,0000,0000,0000,,Love is so bittersweet.
+Dialogue: 0,0:02:18.58,0:02:21.69,LyricsDefault,,0000,0000,0000,,tanjun meikai hukuzatsu kaikina shiromono
+Dialogue: 0,0:02:18.58,0:02:21.69,ToradoraDefault,,0000,0000,0000,,Plain and simple while\Ncomplicated and mysterious.
+Dialogue: 0,0:02:21.69,0:02:24.72,LyricsDefault,,0000,0000,0000,,doudemoii kotobakkari\Nkinishitari suruno
+Dialogue: 0,0:02:21.69,0:02:24.72,ToradoraDefault,,0000,0000,0000,,You get worried about\Nthe most pointless things.
+Dialogue: 0,0:02:24.72,0:02:27.59,LyricsDefault,,0000,0000,0000,,donna kanji sonna kanji
+Dialogue: 0,0:02:24.72,0:02:27.59,ToradoraDefault,,0000,0000,0000,,How does it feel? THAT's how it feels.
+Dialogue: 0,0:02:27.59,0:02:30.76,LyricsDefault,,0000,0000,0000,,onkou tokujitsu\Nekisentorikku na anata
+Dialogue: 0,0:02:27.59,0:02:30.76,ToradoraDefault,,0000,0000,0000,,You are gentle and\Nsincere yet eccentric.
+Dialogue: 0,0:02:30.76,0:02:33.77,LyricsDefault,,0000,0000,0000,,tsuyogaru soburiwo\Nzenshin matotte tachiuchi
+Dialogue: 0,0:02:30.76,0:02:33.77,ToradoraDefault,,0000,0000,0000,,I act tough as we butt heads.
+Dialogue: 0,0:02:33.77,0:02:36.60,ToradoraDefault,,0000,0000,0000,,I get dizzy whenever I try\Nto be honest to myself.
+Dialogue: 0,0:02:33.77,0:02:36.60,LyricsDefault,,0000,0000,0000,,sunaona dakedato shigekigai\Ntsuyokute kurakura
+Dialogue: 0,0:02:36.60,0:02:42.74,ToradoraDefault,,0000,0000,0000,,I get hurt. You get hurt.\NInnocent preparation.
+Dialogue: 0,0:02:36.60,0:02:42.74,LyricsDefault,,0000,0000,0000,,kizutsui chauno kizutsuke chauno\Njunjou pureparato
+Dialogue: 0,0:02:42.74,0:02:48.59,ToradoraDefault,,0000,0000,0000,,In my mind, I'm always alone\Non an innocent Pre-Parade.
+Dialogue: 0,0:02:42.74,0:02:48.59,LyricsDefault,,0000,0000,0000,,atamano nakawa itsumo hitorino\Njunjou pureparedo
+Dialogue: 0,0:02:52.54,0:02:55.69,ImagetextBD,Caption,0000,0000,0000,,Tiger and Dragon
+Dialogue: 0,0:03:36.50,0:03:40.16,ImagetextBD,Caption,0000,0000,0000,,Takasu Residence
+Dialogue: 0,0:03:41.62,0:03:44.00,ImagetextBD,Ryuji,0000,0000,0000,,That thing
+Dialogue: 0,0:04:10.83,0:04:12.17,ImagetextBD,Caption,0000,0000,0000,,Heat before you eat\N-Ryu
+Dialogue: 0,0:04:58.00,0:04:59.47,ImagetextBD,Caption,0000,0000,0000,,Ohashi High School\NGeneral Affairs - Lost and Found
+Dialogue: 0,0:07:18.31,0:07:20.89,ImagetextBD,Caption,0000,0000,0000,,Fierce as a tiger
+Dialogue: 0,0:07:18.90,0:07:20.89,ImagetextBD,Caption,0000,0000,0000,,But small
+Dialogue: 0,0:11:07.41,0:11:09.59,ImagetextBD,Caption,0000,0000,0000,,Cruisin' Tunes - Spring
+Dialogue: 0,0:11:20.84,0:11:22.49,ImagetextBD,Caption,0000,0000,0000,,From: Aisaka Taiga\N(If you don't want this, throw it away.)
+Dialogue: 0,0:12:16.15,0:12:19.03,ImagetextBD,Caption,0000,0000,0000,,Takasu Yasuko - Stage name: Mirano
+Dialogue: 0,0:12:16.65,0:12:19.03,ImagetextBD,Caption,0000,0000,0000,,"On the Clock"
+Dialogue: 0,0:16:32.28,0:16:35.15,ImagetextBD,Caption,0000,0000,0000,,For: Kushieda Minori\NFrom: Takasu Ryuji
+Dialogue: 0,0:18:40.45,0:18:41.96,ImagetextBD,Caption,0000,0000,0000,,To: Mr. Kitamura Yusaku
+Dialogue: 0,0:23:25.07,0:23:28.55,LyricsDefault,,0000,0000,0000,,banira sorutode
+Dialogue: 0,0:23:25.07,0:23:28.55,ToradoraDefault,,0000,0000,0000,,Add vanilla salt.
+Dialogue: 0,0:23:28.55,0:23:30.27,LyricsDefault,,0000,0000,0000,,BURNING LOVE
+Dialogue: 0,0:23:28.55,0:23:30.27,ToradoraDefault,,0000,0000,0000,,Burning love.
+Dialogue: 0,0:23:31.08,0:23:37.81,LyricsDefault,,0000,0000,0000,,amai dakenara
+Dialogue: 0,0:23:31.08,0:23:37.81,ToradoraDefault,,0000,0000,0000,,If it's too sweet,
+Dialogue: 0,0:23:37.81,0:23:42.75,LyricsDefault,,0000,0000,0000,,soruto kakemashou
+Dialogue: 0,0:23:37.81,0:23:42.75,ToradoraDefault,,0000,0000,0000,,we can add some salt.
+Dialogue: 0,0:23:45.86,0:23:49.26,LyricsDefault,,0000,0000,0000,,dareyorimo motto motto watashiwo
+Dialogue: 0,0:23:45.86,0:23:49.26,ToradoraDefault,,0000,0000,0000,,I tell you all these things because
+Dialogue: 0,0:23:49.26,0:23:52.67,LyricsDefault,,0000,0000,0000,,shitte hoshii kara sarake dashitai
+Dialogue: 0,0:23:49.26,0:23:52.67,ToradoraDefault,,0000,0000,0000,,I want you to know me\Nbetter than anyone else.
+Dialogue: 0,0:23:52.67,0:23:56.13,LyricsDefault,,0000,0000,0000,,demo dekinaino keiken NOTHING
+Dialogue: 0,0:23:52.67,0:23:56.13,ToradoraDefault,,0000,0000,0000,,But nothing works when\NI have no experience.
+Dialogue: 0,0:23:56.13,0:23:58.23,LyricsDefault,,0000,0000,0000,,modokashi sugiru
+Dialogue: 0,0:23:56.13,0:23:58.23,ToradoraDefault,,0000,0000,0000,,This is so frustrating.
+Dialogue: 0,0:23:59.82,0:24:05.07,LyricsDefault,,0000,0000,0000,,demo amaidakeno aiwa chotto
+Dialogue: 0,0:23:59.82,0:24:05.07,ToradoraDefault,,0000,0000,0000,,But a love that's purely sweet
+Dialogue: 0,0:24:06.34,0:24:12.40,LyricsDefault,,0000,0000,0000,,watashiga motometeiru\Nmonotowa chigau
+Dialogue: 0,0:24:06.34,0:24:12.40,ToradoraDefault,,0000,0000,0000,,isn't quite the love I'm looking for.
+Dialogue: 0,0:24:12.99,0:24:16.37,LyricsDefault,,0000,0000,0000,,shiroto iwaretara
+Dialogue: 0,0:24:12.99,0:24:16.37,ToradoraDefault,,0000,0000,0000,,If you say white,
+Dialogue: 0,0:24:16.37,0:24:19.83,LyricsDefault,,0000,0000,0000,,kurodatte icchau
+Dialogue: 0,0:24:16.37,0:24:19.83,ToradoraDefault,,0000,0000,0000,,I say black.
+Dialogue: 0,0:24:19.83,0:24:23.29,LyricsDefault,,0000,0000,0000,,sunaoni narenai
+Dialogue: 0,0:24:19.83,0:24:23.29,ToradoraDefault,,0000,0000,0000,,A little imp
+Dialogue: 0,0:24:23.29,0:24:25.79,LyricsDefault,,0000,0000,0000,,amanojaku
+Dialogue: 0,0:24:23.29,0:24:25.79,ToradoraDefault,,0000,0000,0000,,who can't be honest to herself.
+Dialogue: 0,0:24:26.64,0:24:30.03,LyricsDefault,,0000,0000,0000,,sukito iwaretara
+Dialogue: 0,0:24:26.64,0:24:30.03,ToradoraDefault,,0000,0000,0000,,If you say love,
+Dialogue: 0,0:24:30.03,0:24:33.56,LyricsDefault,,0000,0000,0000,,daikirai datte
+Dialogue: 0,0:24:30.03,0:24:33.56,ToradoraDefault,,0000,0000,0000,,I say hate.
+Dialogue: 0,0:24:33.56,0:24:39.36,LyricsDefault,,0000,0000,0000,,ureshii noni nani ittendarou
+Dialogue: 0,0:24:33.56,0:24:39.36,ToradoraDefault,,0000,0000,0000,,Why do I say that when\NI'm actually happy?
+Dialogue: 0,0:24:39.69,0:24:46.10,LyricsDefault,,0000,0000,0000,,amai banirani
+Dialogue: 0,0:24:39.69,0:24:46.10,ToradoraDefault,,0000,0000,0000,,It's like adding salt
+Dialogue: 0,0:24:46.37,0:24:51.24,LyricsDefault,,0000,0000,0000,,soruto kakeru youni
+Dialogue: 0,0:24:46.37,0:24:51.24,ToradoraDefault,,0000,0000,0000,,to sweet vanilla...
