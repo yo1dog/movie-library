@@ -86,8 +86,9 @@ function makeFilenameFriendly(str) {
   return (
     str
     .normalize('NFKD')
-    .replace(/’/g, `'`)
+    .replace(/[’`]/g, `'`)
     .replace(/\s*[|:]\s*/g, ' - ')
+    .replace(/[–]/g, '-')
     .replace(/[/]/g, '-')
     .replace(/[<>:"/\\|?*]+/g, '')
     .replace(/[^ -~]+/g, '')
@@ -201,7 +202,6 @@ async function refreshData() {
       fileSpan: 1,
       rowIndex: -1
     });
-    if (ord === 20012) console.log(tvdbEpisode)
   }
   episodeMappings.sort((a, b) => a.episode.ord - b.episode.ord);
   
@@ -502,10 +502,10 @@ function fillTable() {
       }
       if (origFilepath.toLowerCase() === newFilepath.toLowerCase()) {
         const tempFilepath = `${origFilepath}-temp`;
-        outputStr += `mv -vn "${origFilepath}" "${tempFilepath}";\n`;
+        outputStr += `mv -vn "${origFilepath.replace(/\$/g, '\\$')}" "${tempFilepath.replace(/\$/g, '\\$')}";\n`;
         origFilepath = tempFilepath;
       }
-      outputStr += `mv -vn \\\n  "${origFilepath}" \\\n  "${newFilepath}";\n`;
+      outputStr += `mv -vn \\\n  "${origFilepath.replace(/\$/g, '\\$')}" \\\n  "${newFilepath.replace(/\$/g, '\\$')}";\n`;
     }
   }
   outputElem.value = outputStr;

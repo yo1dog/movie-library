@@ -31,9 +31,9 @@ const results = nfos.map(nfo => {
   const episodeMatches = Array.from(nfoStr.matchAll(/<episode>(\d+)<\/episode>/g));
   const titleMatches = Array.from(nfoStr.matchAll(/<title>([^<]+)<\/title>/g));
   
-  if (!seasonMatch) return [origName, 'Error: Unable to extract season.'];
-  if (!episodeMatches.length > 0) return [origName, 'Error: Unable to extract episode.'];
-  if (!titleMatches.length > 0) return [origName, 'Error: Unable to extract title.'];
+  if (!seasonMatch) return [nfo.name, 'Error: Unable to extract season.'];
+  if (episodeMatches.length === 0) return [nfo.name, 'Error: Unable to extract episode.'];
+  if (titleMatches.length === 0) return [nfo.name, 'Error: Unable to extract title.'];
   
   const season = seasonMatch[1];
   const episodes = episodeMatches.map(x => x[1]);
@@ -56,8 +56,9 @@ function makeFilenameFriendly(str) {
   return (
     str
     .normalize('NFKD')
-    .replace(/’/g, `'`)
+    .replace(/[’`]/g, `'`)
     .replace(/\s*[|:]\s*/g, ' - ')
+    .replace(/[–]/g, '-')
     .replace(/[/]/g, '-')
     .replace(/[<>:"/\\|?*]+/g, '')
     .replace(/[^ -~]+/g, '')
