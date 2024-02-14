@@ -472,6 +472,22 @@ body {
 .mouseNav .playerButton:hover {
   color: rgba(255,255,255,1);
 }
+.playerButton:disabled,
+.mouseNav .playerButton:disabled:hover {
+  color: rgba(255,255,255,0);
+}
+.keyboardNav .playerButton:disabled.active {
+  color: rgba(255,255,255,0.5);
+}
+.playerButton .disabledSVG {
+  display: none;
+}
+.playerButton:disabled .disabledSVG {
+  display: inherit;
+}
+.playerButton:disabled .enabledSVG {
+  display: none;
+}
 
 .playerButton svg {
   padding: 5pt;
@@ -484,6 +500,13 @@ body {
   font-size: 10pt;
   text-shadow: 0pt 1pt 2pt #000;
   font-variant-numeric: tabular-nums;
+}
+
+@keyframes spin {
+  to {transform:rotate(360deg);}
+}
+.loadingSVG {
+  animation: spin 1000ms linear infinite;
 }
 
 .playerScrubber {

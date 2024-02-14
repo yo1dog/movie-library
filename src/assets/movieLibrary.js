@@ -844,13 +844,22 @@ class PinScreen extends Screen {
 
 class PlayerScreen extends Screen {
   /**
-   * @param {string} videoFilepath 
+   * @param {string | string[]} videoFilepaths 
+   * @param {PlaylistState} [playlistState] 
    */
-  constructor(videoFilepath) {
+  constructor(videoFilepaths, playlistState) {
+    if (!Array.isArray(videoFilepaths)) {
+      videoFilepaths = [videoFilepaths];
+    }
+    /** @type {number} */
+    let curVideoIndex;
+    /** @type {boolean} */
+    let isWaiting; // TODO: Should track this with video elem prop instead?
+    
     const frag = /** @type {DocumentFragment} */(playerScreenTemplate.content.cloneNode(true));
     const screenElem = requireElem('main', frag);
     const videoElem = /** @type {HTMLVideoElement} */(requireElem('video', screenElem));
-    const playerElem = /** @type {HTMLInputElement} */(requireElem('.player', screenElem));
+    const playerElem = requireElem('.player', screenElem);
     const controlsElem = /** @type {HTMLInputElement} */(requireElem('.playerControls', screenElem));
     const scrubberElem = /** @type {HTMLInputElement} */(requireElem('.playerScrubber', screenElem));
     const timeElem = requireElem('.playerTime', screenElem);
@@ -861,6 +870,7 @@ class PlayerScreen extends Screen {
     const playPauseButtonElem = /** @type {HTMLButtonElement} */(requireElem('.playerPlayPauseButton', screenElem));
     const playSVG = requireElem('.playSVG', playPauseButtonElem);
     const pauseSVG = requireElem('.pauseSVG', playPauseButtonElem);
+    const loadingSVG = requireElem('.loadingSVG', playPauseButtonElem);
     const fastForwardButtonElem = /** @type {HTMLButtonElement} */(requireElem('.playerFastForwardButton', screenElem));
     const nextButtonElem = /** @type {HTMLButtonElement} */(requireElem('.playerNextButton', screenElem));
     
@@ -878,12 +888,13 @@ class PlayerScreen extends Screen {
       return PLAYER_SKIP_SMALL_DURATION_S;
     }
     
-    const navList = new NavigatableList([
+    /** @type {NavListItemRaw[]} */
+    const navListItems = [
       {elem: stopButtonElem, action: () =>
         this.close()
       },
       {elem: previousButtonElem, action: () => {
-        // noop
+        setVideoIndex(curVideoIndex - 1);
       }},
       {elem: rewindButtonElem, action: event => {
         setVideoTime(videoElem.currentTime - calcPlayerSkipDurS(event));
@@ -895,11 +906,24 @@ class PlayerScreen extends Screen {
         setVideoTime(videoElem.currentTime + calcPlayerSkipDurS(event));
       }},
       {elem: nextButtonElem, action: () => {
-        // noop
+        setVideoIndex(curVideoIndex + 1);
       }},
-    ]);
+    ];
+    
+    if (videoFilepaths.length === 1) {
+      navListItems.splice(navListItems.findIndex(x => x.elem === previousButtonElem), 1);
+      navListItems.splice(navListItems.findIndex(x => x.elem === nextButtonElem), 1);
+      previousButtonElem.remove();
+      nextButtonElem.remove();
+      stopButtonElem.style.gridColumnStart = (parseInt(stopButtonElem.style.gridColumnStart, 10) + 1).toString();
+    }
+    
+    const navList = new NavigatableList(navListItems);
     const playPauseNavListIndex = navList.items.findIndex(x => x.elem === playPauseButtonElem);
     const allowRepeatNavItems = navList.items.filter(x => x.elem === fastForwardButtonElem || x.elem === rewindButtonElem);
+    if (navController.getIsKeyboardNavActive()) {
+      navList.setActiveItem(playPauseNavListIndex);
+    }
     
     let isControlsActive = false;
     let isScrubberActive = false;
@@ -941,7 +965,8 @@ class PlayerScreen extends Screen {
      * @param {boolean} [skipUpdateScrubberValue] 
      */
     function setVideoTime(timeSec, skipUpdateScrubberValue) {
-      timeSec = Math.max(Math.min(timeSec, videoElem.duration), 0);
+      if (isNaN(videoElem.duration)) return;
+      timeSec = Math.max(Math.min(timeSec, videoElem.duration || 0), 0);
       _setVideoElemCurrentTime(timeSec);
       updateVideoTimeUI(timeSec, skipUpdateScrubberValue);
     } 
@@ -950,9 +975,18 @@ class PlayerScreen extends Screen {
      * @param {boolean} [skipUpdateScrubberValue] 
      */
     function updateVideoTimeUI(timeSec, skipUpdateScrubberValue) {
-      if (!skipUpdateScrubberValue) scrubberElem.valueAsNumber = (timeSec / videoElem.duration) * 100;
-      scrubberElem.style.setProperty('--value', `${(timeSec / videoElem.duration) * 100}%`);
+      let prct = (timeSec / videoElem.duration) * 100;
+      if (isNaN(prct)) prct = 0;
+      
+      if (!skipUpdateScrubberValue) scrubberElem.valueAsNumber = prct;
+      scrubberElem.style.setProperty('--value', `${prct}%`);
       timeElem.innerText = formatDuration(timeSec);
+    }
+    /**
+     * @param {number} durationS 
+     */
+    function updateVideoDurationUI(durationS) {
+      durationElem.innerText = formatDuration(durationS);
     }
     function getIsPlaying() {
       return !videoElem.paused && !videoElem.ended;
@@ -960,11 +994,21 @@ class PlayerScreen extends Screen {
     function updatePlayPauseUI() {
       if (getIsPlaying()) {
         playSVG.style.display = 'none';
-        pauseSVG.style.display = '';
+        //const isWaiting = videoElem.readyState < videoElem.HAVE_FUTURE_DATA;
+        if (isWaiting) {
+          pauseSVG.style.display = 'none';
+          loadingSVG.style.display = '';
+        }
+        else {
+          pauseSVG.style.display = '';
+          loadingSVG.style.display = 'none';
+        }
       }
       else {
         playSVG.style.display = '';
         pauseSVG.style.display = 'none';
+        loadingSVG.style.display = 'none';
+        playSVG.style.color = videoElem.error? 'red' : '';
       }
     }
     function togglePlayPause() {
@@ -978,21 +1022,47 @@ class PlayerScreen extends Screen {
       }
     }
     
-    videoElem.src = /^(\.|http)/.test(videoFilepath)? videoFilepath : 'file://' + videoFilepath;
+    deactivateControls();
+    updatePlayPauseUI();
+    updateVideoTimeUI(0);
+    updateVideoDurationUI(0);
+    
+    const updatePlaylistState = playlistState? debounce(1000, () => {
+      playlistState.videoIndex = curVideoIndex;
+      playlistState.videoElapsedSec = videoElem.currentTime || 0;
+      savePlaylistState(playlistState);
+    }) : () => {/*noop*/};
     
     videoElem.addEventListener('loadedmetadata', () => {
       updateVideoTimeUI(videoElem.currentTime);
       updatePlayPauseUI();
     });
     videoElem.addEventListener('durationchange', () => {
-      durationElem.innerText = formatDuration(videoElem.duration);
+      updateVideoDurationUI(videoElem.duration);
+      updatePlayPauseUI();
     });
     videoElem.addEventListener('timeupdate', () => {
       updateVideoTimeUI(videoElem.currentTime);
+      updatePlaylistState();
     });
-    videoElem.addEventListener('play',  () => updatePlayPauseUI());
+    videoElem.addEventListener('play', () => {
+      updatePlayPauseUI();
+    });
     videoElem.addEventListener('pause', () => updatePlayPauseUI());
-    videoElem.addEventListener('ended', () => updatePlayPauseUI());
+    videoElem.addEventListener('error', () => updatePlayPauseUI());
+    videoElem.addEventListener('waiting', () => {
+      isWaiting = true;
+      updatePlayPauseUI();
+    });
+    videoElem.addEventListener('playing', () => {
+      isWaiting = false;
+      updatePlayPauseUI();
+    });
+    videoElem.addEventListener('ended', () => {
+      updatePlayPauseUI();
+      setVideoIndex(curVideoIndex + 1);
+    });
+    
     videoElem.addEventListener('click', () => togglePlayPause());
     
     scrubberElem.addEventListener('mousedown', () => {
@@ -1018,6 +1088,31 @@ class PlayerScreen extends Screen {
     //   debug: true
     // });
     
+    /** @param {number} targetIndex */
+    function setVideoIndex(targetIndex) {
+      targetIndex = Math.max(Math.min(targetIndex, videoFilepaths.length - 1), 0);
+      if (curVideoIndex === targetIndex) return;
+      
+      curVideoIndex = targetIndex;
+      const videoFilepath = videoFilepaths[curVideoIndex];
+      
+      previousButtonElem.disabled = curVideoIndex <= 0;
+      nextButtonElem.disabled = curVideoIndex >= videoFilepaths.length - 1;
+      
+      updateVideoTimeUI(0);
+      updateVideoDurationUI(0);
+      isWaiting = true;
+      videoElem.src = /^(\.|http)/.test(videoFilepath)? videoFilepath : 'file://' + videoFilepath;
+      videoElem.load();
+      void videoElem.play();
+      updatePlayPauseUI();
+    }
+    
+    setVideoIndex(playlistState?.videoIndex || 0);
+    if (playlistState?.videoElapsedSec) {
+      videoElem.currentTime = playlistState.videoElapsedSec;
+    }
+    
     super(screenElem);
     this.videoElem = videoElem;
     this.navList = navList;
@@ -1035,8 +1130,11 @@ class PlayerScreen extends Screen {
     this.getIsScrubberActive = () => isScrubberActive;
     this.getIsPlaying = getIsPlaying;
     this.calcPlayerSkipDurS = calcPlayerSkipDurS;
-    
-    activateControls();
+  }
+  
+  show() {
+    this.activateControls();
+    return super.show();
   }
   
   /**
@@ -1199,7 +1297,15 @@ function init() {
   //     ]).show()
   //   ).show()
   // }]).show();
-  new PlayerScreen(String.raw`"M:\Movies\Disney\Aladdin (1992)\Aladdin (1992).mkv"`.replace(/"/g, '')).show();
+  
+  const testPaths = Array(10).fill(0).map((_,i) => `http://127.0.0.1:8080/thing${i+1}.mp4`);
+  new MenuScreen([{
+    title: 'Movie',
+    action: () => new PlayerScreen(testPaths[1]).show()
+  }, {
+    title: 'Show',
+    action: () => new PlayerScreen(testPaths.slice(2,7), getPlaylistState('test')).show()
+  }]).show();
   
   // Register key listener.
   window.addEventListener('keydown', event => {
@@ -1250,6 +1356,44 @@ function playVideo(filepath) {
 //   if (index === undefined || index < 0) return;
 //   localStorage.setItem('lastGridActiveItemIndex', index.toString());
 // }
+
+/**
+ * @typedef PlaylistState
+ * @property {string} id
+ * @property {number} videoIndex
+ * @property {number} videoElapsedSec
+ */
+
+/** @type {Map<string, PlaylistState>} */
+const playlistStateCache = new Map();
+
+/** @param {string} playlistStateID */
+function getPlaylistState(playlistStateID) {
+  let state = playlistStateCache.get(playlistStateID);
+  if (state) return state;
+  
+  const stateJSON = localStorage.getItem(`playlistState_${playlistStateID}`);
+  if (stateJSON) {
+    try {
+      state = JSON.parse(stateJSON);
+    } catch(err) {/* noop */}
+  }
+  
+  if (!state) {
+    state = {
+      id: playlistStateID,
+      videoIndex: 0,
+      videoElapsedSec: 0,
+    };
+  }
+  
+  playlistStateCache.set(playlistStateID, state);
+  return state;
+}
+/** @param {PlaylistState} playlistState */
+function savePlaylistState(playlistState) {
+  localStorage.setItem(`playlistState_${playlistState.id}`, JSON.stringify(playlistState));
+}
 
 /**
  * @param {string} selectors
