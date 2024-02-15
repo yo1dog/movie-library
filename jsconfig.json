@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
-    "lib": ["es2020","dom"],
+    "lib": ["es2021","dom"],
     "module": "esnext",
-    "target": "es2020",
+    "target": "es2021",
     "strict": true,
     "strictNullChecks": true,
     "skipLibCheck": true,
