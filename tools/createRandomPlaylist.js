@@ -2,6 +2,19 @@ const fs = require('fs/promises');
 const path = require('path');
 
 /**
+ * @typedef BumperConfigDef
+ * @property {string} dir
+ * @property {number} min
+ * @property {number} max
+ */
+/**
+ * @typedef BumperConfig
+ * @property {number} min
+ * @property {number} max
+ * @property {number} index
+ * @property {string[]} filepaths
+ */
+/**
  * @typedef ShowDef
  * @property {string} name
  * @property {boolean} isKids
@@ -17,8 +30,15 @@ const path = require('path');
  */
 
 const rootDir = '/mnt/m/TV/';
-const kidsBumperDir = '/mnt/m/Bumpers/CN City Bumpers';
-const adultBumperDir = '/mnt/m/Bumpers/Ambient Swim Bumpers';
+/** @type {BumperConfigDef[]} */
+const kidsBumperConfigDefs = [
+  {dir: '/mnt/m/Bumpers/CN City Bumpers', min: 1, max: 1},
+];
+/** @type {BumperConfigDef[]} */
+const adultBumperConfigDefs = [
+  {dir: '/mnt/m/Bumpers/bumpworthy', min: 1, max: 3},
+  {dir: '/mnt/m/Bumpers/Ambient Swim Bumpers', min: 1, max: 1},
+];
 
 /** @type {ShowDef[]} */
 const showDefs = [
@@ -62,18 +82,73 @@ const isKidsFilter = false;
 
 (async () => {
 
-const bumperDir = isKidsFilter? kidsBumperDir : adultBumperDir;
-const bumperFilepaths = (
-  (await fs.readdir(bumperDir, {withFileTypes: true}))
-  .filter(x => x.isFile && (x.name.endsWith('.mp4') || x.name.endsWith('.mkv')))
-  .map(x => path.join(bumperDir, x.name))
-);
-for (let i = bumperFilepaths.length; i > 0;) {
-  const r = Math.floor(Math.random() * i);
-  --i;
-  const temp = bumperFilepaths[i];
-  bumperFilepaths[i] = bumperFilepaths[r];
-  bumperFilepaths[r] = temp;
+/** @type {import('./ffprobe').FFprobeProbeResult[]} */
+const ffprobes = JSON.parse(await fs.readFile('/mnt/m/metadata/ffprobes.json', 'utf8'));
+/** @param {string} dir */
+function getVideoFilepaths(dir) {
+  const prefix = dir + '/';
+  const filepaths = [];
+  for (const ffprobe of ffprobes) {
+    if (ffprobe.format?.filename.startsWith(prefix)) {
+      filepaths.push(ffprobe.format.filename);
+    }
+  }
+  return filepaths;
+}
+
+// const videoFilepathCacheFilepath = path.join(__dirname, '..', 'tmp', 'videoFilepathCache.json');
+// /** @type {Record<string, string[]>} */
+// let videoFilepathCache;
+// try {
+//   videoFilepathCache = JSON.parse(await fs.readFile(videoFilepathCacheFilepath, 'utf8'));
+// } catch (err) {/*noop*/}
+
+// /** @param {string} dir */
+// async function getVideoFilepaths(dir) {
+//   if (videoFilepathCache[dir]) {
+//     return videoFilepathCache[dir];
+//   }
+  
+//   const filepaths = [];
+//   const dirents = await fs.readdir(dir, {withFileTypes: true});
+//   for (const dirent of dirents) {
+//     if (dirent.isFile()) {
+//       if (!dirent.name.endsWith('.mp4')) continue;
+//       if (!dirent.name.endsWith('.mkv')) continue;
+//       if (!dirent.name.endsWith('.api')) continue;
+//       filepaths.push(path.join(dir, dirent.name));
+//     }
+//     else if (dirent.isDirectory()) {
+//       const subDir = path.join(dir, dirent.name);
+//       const dirents = await fs.readdir(subDir, {withFileTypes: true});
+//       for (const dirent of dirents) {
+//         if (!dirent.isFile()) continue;
+//         if (!dirent.name.endsWith('.mp4')) continue;
+//         if (!dirent.name.endsWith('.mkv')) continue;
+//         if (!dirent.name.endsWith('.api')) continue;
+//         filepaths.push(path.join(subDir, dirent.name));
+//       }
+//     }
+//   }
+  
+//   videoFilepathCache[dir] = filepaths;
+//   await fs.writeFile(videoFilepathCacheFilepath, JSON.stringify(videoFilepathCache), 'utf8');
+//   return filepaths;
+// }
+
+const bumperConfigDefs = isKidsFilter? kidsBumperConfigDefs : adultBumperConfigDefs;
+/** @type {BumperConfig[]} */
+const bumperConfigs = [];
+for (const bumperConfigDef of bumperConfigDefs) {
+  const {dir, min, max} = bumperConfigDef;
+  const filepaths = getVideoFilepaths(dir);
+  
+  bumperConfigs.push({
+    min,
+    max,
+    index: 0,
+    filepaths,
+  });
 }
 
 /** @type {Show[]} */
@@ -83,32 +158,12 @@ for (const showDef of showDefs) {
   if (showDef.isKids !== isKidsFilter) continue;
   const showDir = path.join(rootDir, showDef.name);
   
-  const filepaths = [];
-  const dirents = await fs.readdir(showDir, {withFileTypes: true});
-  for (const dirent of dirents) {
-    if (dirent.isFile()) {
-      filepaths.push(path.join(showDir, dirent.name));
-    }
-    else if (dirent.isDirectory()) {
-      const seasonDir = path.join(showDir, dirent.name);
-      const dirents = await fs.readdir(seasonDir, {withFileTypes: true});
-      for (const dirent of dirents) {
-        if (!dirent.isFile()) continue;
-        if (!dirent.name.endsWith('.mp4') && !dirent.name.endsWith('.mkv')) continue;
-        if (dirent.name.startsWith('temp')) continue;
-        filepaths.push(path.join(seasonDir, dirent.name));
-      }
-    }
-  }
-  
-  const videoFilepaths = (
-    filepaths
-    .filter(x => x.endsWith('.mp4') || x.endsWith('.mkv'))
-    .sort()
-  );
+  const videoFilepaths = getVideoFilepaths(showDir);
   if (videoFilepaths.length === 0) {
     continue;
   }
+  
+  videoFilepaths.sort();
   
   shows.push({
     name: showDef.name,
@@ -140,7 +195,6 @@ function recalcWeights() {
 resetWeights();
 const shrinkFactor = 0.15;
 
-let bumperIndex = 0;
 while (shows.length > 0) {
   const rand = Math.random();
   
@@ -173,10 +227,19 @@ while (shows.length > 0) {
   const videoFilepath = show.videoFilepaths[videoIndex];
   show.videoFilepaths.splice(videoIndex, 1);
   
-  const bumperFilepath = bumperFilepaths[bumperIndex];
-  bumperIndex = (bumperIndex + 1) % bumperFilepaths.length;
+  for (const bumperConfig of bumperConfigs) {
+    const count = bumperConfig.min + Math.floor(Math.random() * (1 + bumperConfig.max - bumperConfig.min));
+    for (let i = 0; i < count; ++i) {
+      if (bumperConfig.index === 0) {
+        fisherYatesShuffle(bumperConfig.filepaths);
+      }
+      
+      const filepath = bumperConfig.filepaths[bumperConfig.index];
+      bumperConfig.index = (bumperConfig.index + 1) % bumperConfig.filepaths.length;
+      console.log(posixToWin(filepath));
+    }
+  }
   
-  console.log(posixToWin(bumperFilepath));
   console.log(posixToWin(videoFilepath));
   
   if (show.videoFilepaths.length === 0) {
@@ -195,4 +258,19 @@ while (shows.length > 0) {
 /** @param {string} posix */
 function posixToWin(posix) {
   return posix.replace(/^\/mnt\/(.)\//, (_,/**@type {string} */x) => x.toUpperCase() + ':\\').replaceAll('/', '\\');
+}
+
+/**
+ * @template T
+ * @param {T[]} arr
+ */
+function fisherYatesShuffle(arr) {
+  for (let i = arr.length; i > 0;) {
+    const r = Math.floor(Math.random() * i);
+    --i;
+    const temp = arr[i];
+    arr[i] = arr[r];
+    arr[r] = temp;
+  }
+  return arr;
 }
