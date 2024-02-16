@@ -469,24 +469,11 @@ body {
   filter: drop-shadow(0pt 1pt 5pt rgba(0,0,0,1));
 }
 .keyboardNav .playerButton.active,
-.mouseNav .playerButton:hover {
+.mouseNav .playerButton.active:hover {
   color: rgba(255,255,255,1);
 }
-.playerButton:disabled,
-.mouseNav .playerButton:disabled:hover {
-  color: rgba(255,255,255,0);
-}
-.keyboardNav .playerButton:disabled.active {
-  color: rgba(255,255,255,0.5);
-}
-.playerButton .disabledSVG {
-  display: none;
-}
-.playerButton:disabled .disabledSVG {
-  display: inherit;
-}
-.playerButton:disabled .enabledSVG {
-  display: none;
+.playerButton.disabled {
+  color: rgba(255,255,255,0) !important;
 }
 
 .playerButton svg {

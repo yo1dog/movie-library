@@ -75,17 +75,19 @@ for (let i = 0; i <=9; ++i) {
  */
 
 /**
- * @typedef NavListItemRaw
- * @property {HTMLElement} elem
- * @property {(event?: KeyboardEvent | MouseEvent) => void} action
+ * @typedef NavListItemDef
+ * @property {HTMLElement} [elem]
+ * @property {(event?: KeyboardEvent | MouseEvent) => void} [action]
+ * @property {boolean} [isDisabled]
  */
 /**
  * @typedef NavListItem
- * @property {HTMLElement} elem
- * @property {(event?: KeyboardEvent | MouseEvent) => void} action
+ * @property {HTMLElement} [elem]
+ * @property {(event?: KeyboardEvent | MouseEvent) => void} [action]
  * @property {number} index
  * @property {number} x
  * @property {number} y
+ * @property {boolean} isDisabled
  */
 
 const navController = (() => {
@@ -118,36 +120,40 @@ const navController = (() => {
 // Simple class for managing navigation state for a list or grid of items.
 class NavigatableList {
   /**
-   * @param {NavListItemRaw[]} rawItems
+   * @param {NavListItemDef[]} itemDefs
    * @param {number} [gridNumColumns]
    * @param {boolean} [enableWrap]
    */
-  constructor(rawItems, gridNumColumns, enableWrap) {
-    if (rawItems.length === 0) throw new Error(`No items given.`);
+  constructor(itemDefs, gridNumColumns, enableWrap) {
+    if (itemDefs.length === 0) throw new Error(`No items given.`);
     
-    this.numColumns = gridNumColumns || rawItems.length;
-    this.numRows = Math.ceil(rawItems.length / this.numColumns);
+    this.numColumns = gridNumColumns || itemDefs.length;
+    this.numRows = Math.ceil(itemDefs.length / this.numColumns);
     this.enableWrap = enableWrap ?? false;
     
     // For each given item, calculate some values and add it to the list.
     /** @type {NavListItem[]} */
     this.items = [];
-    for (let i = 0; i < rawItems.length; ++i) {
+    for (let i = 0; i < itemDefs.length; ++i) {
       /** @type {NavListItem} */
       const item = {
-        elem: rawItems[i].elem,
-        action: rawItems[i].action,
+        elem: itemDefs[i].elem,
+        action: itemDefs[i].action,
         index: i,
         x: i % this.numColumns,
         y: Math.floor(i / this.numColumns),
+        isDisabled: false,
       };
+      if (itemDefs[i].isDisabled) {
+        NavigatableList.#_setItemIsDisabled(item, true);
+      }
       
       // Add listeners for mouse events.
-      item.elem.addEventListener('click', event => {
+      item.elem?.addEventListener('click', event => {
         this.setActiveItem(item.index, false);
-        item.action(event);
+        item.action?.(event);
       });
-      item.elem.addEventListener('mouseenter', () => {
+      item.elem?.addEventListener('mouseenter', () => {
         this.setActiveItem(item.index, false);
       });
       
@@ -170,22 +176,36 @@ class NavigatableList {
       return;
     }
     
-    let index;
-    if (this.enableWrap) {
-      index = this.activeItem.index + dx + (dy * this.numColumns);
-      if (index < 0) index = 0;
-      if (index > this.items.length - 1) index = this.items.length - 1;
-    }
-    else {
-      let x = this.activeItem.x + dx;
-      let y = this.activeItem.y + dy;
-      if (x < 0) x = 0;
-      if (x > this.numColumns - 1) x = this.numColumns - 1;
-      if (y < 0) y = 0;
-      if (y > this.numRows - 1) y = this.numRows - 1;
+    let index = this.activeItem.index;
+    let x = this.activeItem.x;
+    let y = this.activeItem.y;
+    do {
+      if (this.enableWrap) {
+        index += dx + (dy * this.numColumns);
+      }
+      else {
+        x += dx;
+        y += dy;
+        if (x < 0) x = 0;
+        if (y < 0) y = 0;
+        if (x > this.numColumns - 1) x = this.numColumns - 1;
+        if (y > this.numRows    - 1) y = this.numRows    - 1;
+        index = (y * this.numColumns) + x;
+      }
       
-      index = (y * this.numColumns) + x;
-      if (index > this.items.length - 1) index = this.items.length - 1;
+      if (index < 0) {
+        index = 0;
+        break;
+      }
+      if (index > this.items.length - 1) {
+        index = this.items.length - 1;
+        break;
+      }
+    }
+    while (this.items[index].isDisabled);
+    
+    if (this.items[index].isDisabled) {
+      return;
     }
     
     this.setActiveItem(index);
@@ -202,15 +222,15 @@ class NavigatableList {
     }
     
     if (this.activeItem) {
-      this.activeItem.elem.classList.remove('active');
+      this.activeItem.elem?.classList.remove('active');
     }
     
     this.activeItem = newActiveItem;
     
     if (this.activeItem && !this.activeItemIsHidden) {
-      this.activeItem.elem.classList.add('active');
+      this.activeItem.elem?.classList.add('active');
       if (scroll) {
-        this.activeItem.elem.scrollIntoView({
+        this.activeItem.elem?.scrollIntoView({
           // Smooth scrolling momentum in Chrome stops after each scroll command, so it becomes very
           // jumpy and lags behind.
           //behavior: isFirefox? 'smooth' : 'instant',
@@ -222,12 +242,36 @@ class NavigatableList {
     }
   }
   
+  /**
+   * @param {NavListItem} item 
+   * @param {boolean} isDisabled 
+   */
+  static #_setItemIsDisabled(item, isDisabled) {
+    item.isDisabled = isDisabled;
+    item.elem?.classList.toggle('disabled', isDisabled);
+  }
+  
+  /**
+   * @param {number} index 
+   * @param {boolean} isDisabled
+   */
+  setItemIsDisabled(index, isDisabled) {
+    NavigatableList.#_setItemIsDisabled(this.items[index], isDisabled);
+  }
+  
+  /** @param {KeyboardEvent | MouseEvent} event */
+  performActiveAction(event) {
+    if (!this.activeItem) return;
+    if (this.activeItem.isDisabled) return;
+    this.activeItem.action?.(event);
+  }
+  
   hideActiveItem() {
-    this.activeItem?.elem.classList.remove('active');
+    this.activeItem?.elem?.classList.remove('active');
     this.activeItemIsHidden = true;
   }
   unhideActiveItem() {
-    this.activeItem?.elem.classList.add('active');
+    this.activeItem?.elem?.classList.add('active');
     this.activeItemIsHidden = false;
   }
 }
@@ -387,7 +431,7 @@ class MenuScreen extends Screen {
     const gridElem = requireElem('.grid', screenElem);
     const gridItemTemplate = /** @type {HTMLTemplateElement} */(gridElem.getElementsByTagName('TEMPLATE')[0]);
     
-    /** @type {NavListItemRaw[]} */
+    /** @type {NavListItemDef[]} */
     const navItems = [];
     for (const menuItem of menuItems) {
       const gridItemNode = /** @type {DocumentFragment} */(gridItemTemplate.content.cloneNode(true));
@@ -432,7 +476,7 @@ class MenuScreen extends Screen {
         return 2;
       case 'SELECT':
         if (event.repeat) return 2;
-        this.navList.activeItem?.action(event);
+        this.navList.performActiveAction(event);
         return 1;
       case 'LEFT':
         this.navList.move(-1, 0);
@@ -457,7 +501,7 @@ class GridScreen extends Screen {
     
     gridElem.style.gridTemplateColumns = `repeat(${GRID_NUM_COLUMNS}, 1fr)`;
     
-    /** @type {NavListItemRaw[]} */
+    /** @type {NavListItemDef[]} */
     const navItems = [];
     
     // TODO: hack
@@ -516,7 +560,7 @@ class GridScreen extends Screen {
         return 2;
       case 'SELECT':
         if (event.repeat) return 2;
-        this.navList.activeItem?.action(event);
+        this.navList.performActiveAction(event);
         return 1;
       case 'LEFT':
         this.navList.move(-1, 0);
@@ -626,7 +670,7 @@ class DetailScreen extends Screen {
         return 2;
       case 'SELECT':
         if (event.repeat) return 2;
-        this.navList.activeItem?.action(event);
+        this.navList.performActiveAction(event);
         return 1;
       case 'LEFT':
         this.navList.move(-1, 0);
@@ -694,7 +738,7 @@ class PinScreen extends Screen {
     pinNavList.setActiveItem(0);
     
     const numpadElem = requireElem('.numpad', screenElem);
-    /** @type {NavListItemRaw[]} */
+    /** @type {NavListItemDef[]} */
     const numpadNavListItems = [];
     for (let digit = 0; digit < 10; ++digit) {
       numpadNavListItems.push({
@@ -702,7 +746,7 @@ class PinScreen extends Screen {
         action: () => this.addPinChar(digit.toString())
       });
     }
-    /** @type {NavListItemRaw} */
+    /** @type {NavListItemDef} */
     const numpadBackListItem = {
       elem: requireElem(`.numpadBack`, numpadElem),
       action: () => {
@@ -811,7 +855,7 @@ class PinScreen extends Screen {
       case 'SELECT':
         if (event.repeat) return 2;
         if (this.isNumpadFocused) {
-          this.numpadNavList.activeItem?.action(event);
+          this.numpadNavList.performActiveAction(event);
         }
         else {
           this.focusNumpad();
@@ -888,7 +932,7 @@ class PlayerScreen extends Screen {
       return PLAYER_SKIP_SMALL_DURATION_S;
     }
     
-    /** @type {NavListItemRaw[]} */
+    /** @type {NavListItemDef[]} */
     const navListItems = [
       {elem: stopButtonElem, action: () =>
         this.close()
@@ -919,6 +963,8 @@ class PlayerScreen extends Screen {
     }
     
     const navList = new NavigatableList(navListItems);
+    const prevNavListItemIndex = navList.items.findIndex(x => x.elem === previousButtonElem);
+    const nextNavListItemIndex = navList.items.findIndex(x => x.elem === nextButtonElem);
     const playPauseNavListIndex = navList.items.findIndex(x => x.elem === playPauseButtonElem);
     const allowRepeatNavItems = navList.items.filter(x => x.elem === fastForwardButtonElem || x.elem === rewindButtonElem);
     if (navController.getIsKeyboardNavActive()) {
@@ -1096,8 +1142,12 @@ class PlayerScreen extends Screen {
       curVideoIndex = targetIndex;
       const videoFilepath = videoFilepaths[curVideoIndex];
       
-      previousButtonElem.disabled = curVideoIndex <= 0;
-      nextButtonElem.disabled = curVideoIndex >= videoFilepaths.length - 1;
+      if (prevNavListItemIndex !== -1) {
+        navList.setItemIsDisabled(prevNavListItemIndex, curVideoIndex <= 0);
+      }
+      if (nextNavListItemIndex !== -1) {
+        navList.setItemIsDisabled(nextNavListItemIndex, curVideoIndex >= videoFilepaths.length - 1);
+      }
       
       updateVideoTimeUI(0);
       updateVideoDurationUI(0);
@@ -1164,7 +1214,7 @@ class PlayerScreen extends Screen {
               if (event.repeat && !this.allowRepeatNavItems.includes(this.navList.activeItem)) {
                 return 2;
               }
-              this.navList.activeItem.action(event);
+              this.navList.performActiveAction(event);
             }
           }
           this.extendControls();
@@ -1279,33 +1329,103 @@ function init() {
     navController.useKeyboardNav();
   }
   
+  const testPaths = Array(10).fill(0).map((_,i) => `C:\\Users\\Mike\\Downloads\\thing${i+1}.mp4`);
+  const tvPaths = String.raw`
+M:\Bumpers\bumpworthy\8535 - Toonami 3.0 Intro 11.mp4
+M:\TV\Aqua Teen Hunger Force\Season 03\S03E10 - Dusty Gozongas.mp4
+M:\Bumpers\bumpworthy\3751 - Please Enjoy Responsibly.mp4
+M:\Bumpers\bumpworthy\6983 - Call of Duty Playing Stats.mp4
+M:\Bumpers\bumpworthy\4082 - Hollywoodland Remakes.mp4
+M:\TV\King of the Hill\Season 03\S03E16 - Jon Vitti Presents - Return to La Grunta.mp4
+M:\Bumpers\bumpworthy\6339 - Spinning Pretty Faces.mp4
+M:\Bumpers\bumpworthy\8245 - Tagged Videos - Desert Rainbow.mp4
+M:\Bumpers\bumpworthy\5690 - Toonami Now FMA Brotherhood 06.mp4
+M:\TV\Robot Chicken\Season 05\S05E02 - Terms of Endaredevil.mp4
+M:\Bumpers\bumpworthy\5627 - Toonami FMA Brotherhood Next 14.mp4
+M:\TV\King of the Hill\Season 03\S03E17 - Escape from Party Island.mp4
+M:\Bumpers\bumpworthy\8685 - Toonami 3.0 One Piece 15.mp4
+M:\Bumpers\bumpworthy\7685 - Toonami 2.0 Now Naruto Shippuden 3.mp4
+M:\TV\King of the Hill\Season 03\S03E18 - Love Hurts and So Does Art.mp4
+M:\Bumpers\bumpworthy\8714 - King of the Hill Bystander Carmax.mp4
+M:\Bumpers\bumpworthy\1378 - Kim at the Tokyo Anime Fair.mp4
+M:\Bumpers\bumpworthy\1798 - Do Your Shirts.mp4
+M:\TV\Squidbillies\Season 03\S03E14 - Gimmicky Magazine Show Spoof Parody About Dan Halen.mp4
+M:\Bumpers\bumpworthy\8606 - Toonami 3.0 Blue Exorcist 12.mp4
+M:\Bumpers\bumpworthy\84 - FLCL is back.mp4
+M:\TV\Robot Chicken\Season 01\S01E14 - Joint Point.mkv
+M:\Bumpers\bumpworthy\4707 - Submitted Crafts for 2012.mp4
+M:\TV\Bob's Burgers\Season 04\S04E11 - Easy Com-mercial, Easy Go-mercial.mp4
+M:\Bumpers\bumpworthy\8217 - Tagged Videos - CN No. 6 Vintage Tug.mp4
+M:\TV\Squidbillies\Season 09\S09E06 - A Walk To Dignity.mp4
+M:\Bumpers\bumpworthy\5957 - Rated AO - for Adults Only.mp4
+M:\Bumpers\bumpworthy\3904 - May 2011 New Track Samplers v3.mp4
+M:\TV\Aqua Teen Hunger Force\Season 07\S07E05 - Monster.mp4
+M:\Bumpers\bumpworthy\23 - Bearzilla!.mp4
+M:\Bumpers\bumpworthy\983 - B Diddy.mp4
+M:\Bumpers\bumpworthy\5340 - Black Dynamite Word Search.mp4
+M:\TV\Bob's Burgers\Season 04\S04E12 - The Frond Files.mp4
+M:\Bumpers\bumpworthy\6170 - Toonami Cowboy Bebop Next 19 Green.mp4
+M:\Bumpers\bumpworthy\6230 - Tense Meeting Dance.mp4
+M:\TV\Bob's Burgers\Season 04\S04E13 - Mazel-Tina.mp4
+M:\Bumpers\bumpworthy\959 - Where You Are.mp4
+M:\TV\Metalocalypse\Season 03\S03E10 - Doublebookedklok.mp4
+M:\Bumpers\bumpworthy\1843 - No Banking, No Loitering.mp4
+M:\TV\Metalocalypse\Season 04\S04E09 - Going Downklok.mp4
+M:\Bumpers\bumpworthy\3851 - Accordion - Dance 1.mp4
+M:\Bumpers\bumpworthy\5672 - NYULocal Write Up.mp4
+M:\Bumpers\bumpworthy\1371 - Venture Bros. S3 DVD.mp4
+M:\TV\Aqua Teen Hunger Force\Season 08\S08E02 - Allen (2).mp4
+M:\Bumpers\bumpworthy\7021 - Toonami 2.0 FMAB 14.mp4
+M:\TV\King of the Hill\Season 03\S03E19 - Hank's Cowboy Movie.mp4
+M:\Bumpers\bumpworthy\4729 - Staff President Picks 2012.mp4
+M:\Bumpers\bumpworthy\2792 - Watch Our Stuff v2.mp4
+M:\TV\Robot Chicken\Season 01\S01E20 - The Black Cherry.mkv
+M:\Bumpers\bumpworthy\6249 - Tweets Mar 31 2013.mp4
+M:\Bumpers\bumpworthy\7336 - Inuyasha Is Next.mp4
+M:\Bumpers\bumpworthy\2680 - 100 Best First Lines.mp4
+M:\TV\Robot Chicken\Season 03\S03E16 - Bionic Cow.mp4
+  `.split('\n').map(x => x.trim()).filter(x => x);
+  // for (let i = 0; i < tvPaths.length - 1; ++i) {
+  //   const count = 1 + Math.floor(Math.random() * 3);
+  //   const stop = i + count;
+  //   for (; i < stop; ++i) {
+  //     tvPaths.splice(i + 1, 0, `https://www.bumpworthy.com/download/video/${Math.floor(Math.random() * 6000)}`);
+  //   }
+  // }
+  
+  new MenuScreen([{
+    title: 'Movies',
+    action: () => new GridScreen(movies.map(movie => ({
+      title: movie.title,
+      imageURL: movie.thumbURL,
+      action: () => new DetailScreen(movie).show()
+    }))).show()
+  }, {
+    title: 'TV',
+    action: () => new PinScreen('1111', () =>
+      new GridScreen([
+        {title: 'Test1', action: () => new PlayerScreen(`C:\\Users\\Mike\\Downloads\\test.mp4`).show()},
+        {title: 'Test2', action: () => new PlayerScreen(`C:\\Users\\Mike\\Downloads\\test2.mp4`).show()},
+        {title: 'Test3', action: () => new PlayerScreen(`M:\\TV\\Ambient Swim\\bumps\\bump${Math.floor(Math.random()*1521)}.mp4`).show()},
+        {title: 'Test4', action: () => new PlayerScreen(`C:\\Users\\Mike\\Downloads\\The Office (US) (2005) - S01E01 - Pilot (1080p AMZN WEB-DL x265 LION).mkv`).show()},
+        {title: 'Test5', action: () => new PlayerScreen(tvPaths/*, getPlaylistState('test-tv2')*/).show()},
+      ]).show()
+    ).show()
+  }]).show();
+  
   // new MenuScreen([{
-  //   title: 'Movies',
-  //   action: () => new GridScreen(movies.map(movie => ({
-  //     title: movie.title,
-  //     imageURL: movie.thumbURL,
-  //     action: () => new DetailScreen(movie).show()
-  //   }))).show()
+  //   title: 'Movie',
+  //   action: () => new PlayerScreen(testPaths[1]).show()
+  // }, {
+  //   title: 'Show',
+  //   action: () => new PlayerScreen(testPaths.slice(2,7), getPlaylistState('test')).show()
   // }, {
   //   title: 'TV',
-  //   action: () => new PinScreen('1111', () =>
-  //     new GridScreen([
-  //       {title: 'Test1', action: () => new PlayerScreen(`C:\\Users\\Mike\\Downloads\\test.mp4`).show()},
-  //       {title: 'Test2', action: () => new PlayerScreen(`C:\\Users\\Mike\\Downloads\\test2.mp4`).show()},
-  //       {title: 'Test3', action: () => new PlayerScreen(`M:\\TV\\Ambient Swim\\bumps\\bump${Math.floor(Math.random()*1521)}.mp4`).show()},
-  //       {title: 'Test4', action: () => new PlayerScreen(`C:\\Users\\Mike\\Downloads\\The Office (US) (2005) - S01E01 - Pilot (1080p AMZN WEB-DL x265 LION).mkv`).show()},
-  //     ]).show()
+  //   action: () => new PlayerScreen(
+  //     tvPaths,
+  //     //getPlaylistState('test-tv')
   //   ).show()
   // }]).show();
-  
-  const testPaths = Array(10).fill(0).map((_,i) => `http://127.0.0.1:8080/thing${i+1}.mp4`);
-  new MenuScreen([{
-    title: 'Movie',
-    action: () => new PlayerScreen(testPaths[1]).show()
-  }, {
-    title: 'Show',
-    action: () => new PlayerScreen(testPaths.slice(2,7), getPlaylistState('test')).show()
-  }]).show();
   
   // Register key listener.
   window.addEventListener('keydown', event => {
