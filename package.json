@@ -1,11 +1,12 @@
 {
   "scripts": {
-    "bundleRelease": "(cd src; zip ../movieLibrary.zip -r . -x config.js)"
+    "bundleRelease": "(cd src; zip ../movieLibrary.zip -r . -x config.js -x custom.js)"
   },
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^5.52.0",
-    "@typescript-eslint/parser": "^5.52.0",
-    "eslint": "^8.34.0",
-    "typescript": "^4.9.5"
+    "@typescript-eslint/eslint-plugin": "^7.0.2",
+    "@typescript-eslint/parser": "^7.0.2",
+    "eslint": "^8.56.0",
+    "fast-xml-parser": "^4.3.4",
+    "typescript": "^5.3.3"
   }
 }

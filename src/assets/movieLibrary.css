@@ -176,7 +176,7 @@ body {
   justify-content: center;
 }
 
-.detailScreen > div {
+.detailContainer {
   display: flex;
   flex-direction: column;
   position: relative
@@ -300,7 +300,6 @@ body {
   font-weight: 600;
   letter-spacing: 2px;
   line-height: 1.4;
-  cursor: pointer;
   display: inline-block;
   padding-bottom: 15px;
   position: relative;
@@ -316,7 +315,7 @@ body {
   transition: background-color 200ms ease;
 }
 
-.movieTitle {
+.mediaTitle {
   font-size: 24px;
   letter-spacing: 0.11px;
   line-height: 1.2;
@@ -342,6 +341,30 @@ body {
 }
 .detailBottomPannelRight > div {
   margin-bottom: 8px;
+}
+
+.season {
+  margin-bottom: 25pt;
+}
+.gridItem .watchedSVG {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: none;
+  text-align: center;
+  justify-content: space-evenly;
+  align-items: center;
+  padding: 15%;
+  font-size: 2vw;
+  overflow: hidden;
+  opacity: 0.5;
+}
+.gridItem.watched .watchedSVG {
+  display: flex;
+}
+.gridItem.watched img {
+  opacity: 0.25;
 }
 
 .pinScreen .screenBody {

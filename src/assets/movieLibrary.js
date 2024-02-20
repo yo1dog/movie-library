@@ -15,11 +15,14 @@ const PLAYER_SKIP_LARGE_DURATION_S = 5*60;
 
 /** @type {Record<string, string>} */
 const RATING_IMG_URL_DICT = {
-  'Rated G': 'assets/rating-g.png',
-  'Rated PG': 'assets/rating-pg.png',
-  'Rated PG-13': 'assets/rating-pg13.png',
-  'Rated R': 'assets/rating-r.png',
+  'G': 'assets/rating-g.png',
+  'PG': 'assets/rating-pg.png',
+  'PG-13': 'assets/rating-pg13.png',
+  'R': 'assets/rating-r.png',
 };
+for (const rating in RATING_IMG_URL_DICT) {
+  RATING_IMG_URL_DICT[`Rated ${rating}`] = RATING_IMG_URL_DICT[rating];
+}
 
 /** @typedef {'BACK'|'SELECT'|'LEFT'|'RIGHT'|'UP'|'DOWN'|'DIGIT'} KeyAction  */
 /** @type {Record<string, KeyAction>} */
@@ -38,41 +41,11 @@ for (let i = 0; i <=9; ++i) {
   KEY_ACTION_DICT[i.toString()] = 'DIGIT';
 }
 
-/**
- * @typedef CustomWindow
- * @property {Config} [movieLibraryConfig]
- * @property {(movie: Movie) => boolean} [movieLibraryFilter]
- * @property {(movieA: Movie, movieB: Movie) => number} [movieLibrarySort]
- */
-
-/**
- * @typedef Config
- * @property {boolean} [enableGridNavWrap]
- * @property {boolean} [enableMouseAtStart]
- * @property {Movie[]} movies
- */
-
-/**
- * @typedef Movie
- * @property {string} title
- * @property {string} titleSortStr
- * @property {string} setName
- * @property {string} setNameSortStr
- * @property {string} year
- * @property {string} premiereDateISOStr
- * @property {string} plot
- * @property {string} tagline
- * @property {string} rating
- * @property {string[]} genres
- * @property {string[]} directorNames
- * @property {string[]} actorNames
- * @property {boolean} hasSubtitles
- * @property {number} runtimeMinutes
- * @property {string} thumbURL
- * @property {string} logoURL
- * @property {string} keyartURL
- * @property {string} videoFilepath
- */
+/** @typedef {import('./types').Movie} Movie */
+/** @typedef {import('./types').TVShow} TVShow */
+/** @typedef {import('./types').Season} Season */
+/** @typedef {import('./types').Episode} Episode */
+/** @typedef {import('./types').CustomWindow} CustomWindow */
 
 /**
  * @typedef NavListItemDef
@@ -182,8 +155,17 @@ class NavigatableList {
     do {
       if (this.enableWrap) {
         index += dx + (dy * this.numColumns);
+        if (index < 0) {
+          index = 0;
+          break;
+        }
+        if (index > this.items.length - 1) {
+          index = this.items.length - 1;
+          break;
+        }
       }
       else {
+        const lastIndex = index;
         x += dx;
         y += dy;
         if (x < 0) x = 0;
@@ -191,15 +173,8 @@ class NavigatableList {
         if (x > this.numColumns - 1) x = this.numColumns - 1;
         if (y > this.numRows    - 1) y = this.numRows    - 1;
         index = (y * this.numColumns) + x;
-      }
-      
-      if (index < 0) {
-        index = 0;
-        break;
-      }
-      if (index > this.items.length - 1) {
-        index = this.items.length - 1;
-        break;
+        if (index > this.items.length - 1) index = this.items.length - 1;
+        if (index === lastIndex) break;
       }
     }
     while (this.items[index].isDisabled);
@@ -279,6 +254,7 @@ class NavigatableList {
 const menuScreenTemplate = /** @type {HTMLTemplateElement} */(requireElem('#menuScreenTemplate'));
 const gridScreenTemplate = /** @type {HTMLTemplateElement} */(requireElem('#gridScreenTemplate'));
 const detailScreenTemplate = /** @type {HTMLTemplateElement} */(requireElem('#detailScreenTemplate'));
+const tvShowScreenTemplate = /** @type {HTMLTemplateElement} */(requireElem('#tvShowScreenTemplate'));
 const pinScreenTemplate = /** @type {HTMLTemplateElement} */(requireElem('#pinScreenTemplate'));
 const playerScreenTemplate = /** @type {HTMLTemplateElement} */(requireElem('#playerScreenTemplate'));
 
@@ -424,12 +400,23 @@ class Screen {
 class MenuScreen extends Screen {
   /**
    * @param {MenuItem[]} menuItems
+   * @param {boolean} [incBack]
    */
-  constructor(menuItems) {
+  constructor(menuItems, incBack) {
     const frag = /** @type {DocumentFragment} */(menuScreenTemplate.content.cloneNode(true));
     const screenElem = requireElem('main', frag);
     const gridElem = requireElem('.grid', screenElem);
     const gridItemTemplate = /** @type {HTMLTemplateElement} */(gridElem.getElementsByTagName('TEMPLATE')[0]);
+    
+    // TODO: hack
+    if (incBack) {
+      menuItems.unshift({
+        title: 'Back',
+        action: () => this.close(),
+      });
+    }
+    
+    gridElem.style.gridTemplateColumns = `repeat(${menuItems.length}, minmax(auto, 25vw))`;
     
     /** @type {NavListItemDef[]} */
     const navItems = [];
@@ -439,7 +426,15 @@ class MenuScreen extends Screen {
       const gridItemTextElem = requireElem('.gridItemText', gridItemNode);
       const gridItemImgElem = /**@type {HTMLImageElement} */(requireElem('.gridItemImg', gridItemNode));
       
-      gridElem.style.gridTemplateColumns = `repeat(${menuItems.length}, minmax(auto, 25vw))`;
+      // TODO: hack
+      if (incBack && menuItem === menuItems[0]) {
+        const template = document.createElement('template');
+        template.innerHTML = '<svg class="gridItemSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 122.88 108.06"><path d="M63.94,24.28a14.28,14.28,0,0,0-20.36-20L4.1,44.42a14.27,14.27,0,0,0,0,20l38.69,39.35a14.27,14.27,0,0,0,20.35-20L48.06,68.41l60.66-.29a14.27,14.27,0,1,0-.23-28.54l-59.85.28,15.3-15.58Z"/></svg>';
+        const svgElem = requireElem('svg', template.content);
+        gridItemTextElem.insertAdjacentElement('afterend', svgElem);
+        gridItemTextElem.remove();
+        gridItemImgElem.remove();
+      }
       
       gridItemTextElem.innerText = menuItem.title;
       
@@ -530,6 +525,12 @@ class GridScreen extends Screen {
       if (menuItem.imageURL) {
         gridItemImgElem.src = menuItem.imageURL;
       }
+      // else if (menuItem.logoURL) {
+      //   gridItemImgElem.src = menuItem.logoURL;
+      //   gridItemImgElem.style.objectFit = 'contain';
+      //   gridItemImgElem.style.padding = '5%';
+      //   gridItemTextElem.remove();
+      // }
       else {
         gridItemImgElem.remove();
       }
@@ -593,11 +594,11 @@ class DetailScreen extends Screen {
     const detailLogoElem = /** @type {HTMLImageElement} */(requireElem('.detailLogo', screenElem));
     const ratingImgElems = /** @type {HTMLImageElement[]} */(Array.from(screenElem.querySelectorAll('.ratingImg')));
     const closedCaptionsImgElem = /** @type {HTMLImageElement} */(requireElem('.closedCaptionsImg', screenElem));
-    const movieYearElems = /** @type {HTMLElement[]} */(Array.from(screenElem.querySelectorAll('.movieYear')));
+    const movieYearElems = /** @type {HTMLElement[]} */(Array.from(screenElem.querySelectorAll('.mediaYear')));
     const runtimeElems = /** @type {HTMLElement[]} */(Array.from(screenElem.querySelectorAll('.runtime')));
     const generesElems = /** @type {HTMLElement[]} */(Array.from(screenElem.querySelectorAll('.generes')));
     const detailTopPanelDesc = requireElem('.detailTopPanelDesc', screenElem);
-    const movieTitleElem = requireElem('.movieTitle', screenElem);
+    const movieTitleElem = requireElem('.mediaTitle', screenElem);
     const directorsElem = requireElem('.directors', screenElem);
     const starringElem = requireElem('.starring', screenElem);
     const starringContainerElem = /** @type {HTMLElement} */(starringElem.parentElement);
@@ -691,6 +692,158 @@ class DetailScreen extends Screen {
           behavior: 'smooth',
           top: this.elem.scrollHeight
         });
+        return 1;
+    }
+    return super.handleKey(event, keyAction);
+  }
+}
+
+class TVShowScreen extends Screen {
+  /**
+   * @param {TVShow} tvShow 
+   */
+  constructor(tvShow) {
+    const frag = /** @type {DocumentFragment} */(tvShowScreenTemplate.content.cloneNode(true));
+    const screenElem = requireElem('main', frag);
+    
+    const containerElem = requireElem('.detailContainer', screenElem);
+    const detailBackgroundImgElem = /** @type {HTMLImageElement} */(requireElem('.detailBackgroundImgContainer img', screenElem));
+    const detailLogoElem = /** @type {HTMLImageElement} */(requireElem('.detailLogo', screenElem));
+    const ratingImgElem = /** @type {HTMLImageElement} */(requireElem('.ratingImg', screenElem));
+    const mediaYearElem = requireElem('.mediaYear', screenElem);
+    const episodeCountElem = requireElem('.episodeCount', screenElem);
+    // const detailTopPanelDesc = requireElem('.detailTopPanelDesc', screenElem);
+    const seasonTemplate = /** @type {HTMLTemplateElement} */(screenElem.getElementsByTagName('TEMPLATE')[0]);
+    
+    detailBackgroundImgElem.src = tvShow.posterURL;
+    detailLogoElem.alt = tvShow.title;
+    detailLogoElem.src = tvShow.logoURL;
+    
+    for (const imgElem of [detailLogoElem, detailBackgroundImgElem]) {
+      if (!imgElem.complete) {
+        imgElem.classList.add('loading');
+        imgElem.addEventListener('load',  () => imgElem.classList.remove('loading'));
+        imgElem.addEventListener('error', () => imgElem.classList.remove('loading'));
+      }
+    }
+    
+    if (tvShow.rating) {
+      const ratingImgURL = RATING_IMG_URL_DICT[tvShow.rating] || '';
+      ratingImgElem.src = ratingImgURL;
+      ratingImgElem.alt = tvShow.rating;
+      if (!ratingImgURL) ratingImgElem.style.height = 'auto';
+    }
+    else {
+      ratingImgElem.remove();
+    }
+    
+    mediaYearElem.innerText = tvShow.year;
+    // detailTopPanelDesc.innerText = tvShow.plot;
+    
+    /** @type {NavListItemDef[]} */
+    const navItems = [];
+    /** @type {string[]} */
+    const videoFilepaths = [];
+    const playlistState = getPlaylistState(`tvshow-${tvShow.id}`);
+    
+    let totalEpisodeCount = 0;
+    for (const season of tvShow.seasons) {
+      totalEpisodeCount += season.episodes.length;
+      
+      const remainder = navItems.length % GRID_NUM_COLUMNS;
+      if (remainder > 0) {
+        for (let i = remainder; i < GRID_NUM_COLUMNS; ++i) {
+          navItems.push({isDisabled: true});
+        }
+      }
+      
+      const seasonFrag = /** @type {DocumentFragment} */(seasonTemplate.content.cloneNode(true));
+      const seasonElem = requireElem('.season', seasonFrag);
+      const gridElem = requireElem('.grid', seasonElem);
+      const gridItemTemplate = /** @type {HTMLTemplateElement} */(gridElem.getElementsByTagName('TEMPLATE')[0]);
+      
+      gridElem.style.gridTemplateColumns = `repeat(${GRID_NUM_COLUMNS}, 1fr)`;
+      
+      const detailNavItemElem = requireElem('.detailNavItem', seasonFrag);
+      detailNavItemElem.innerText = season.seasonNumber === 0? 'Specials' : `Season ${season.seasonNumber}`;
+      
+      containerElem.appendChild(seasonElem);
+      
+      for (const episode of season.episodes) {
+        const gridItemNode = /** @type {DocumentFragment} */(gridItemTemplate.content.cloneNode(true));
+        const gridItemElem = requireElem('.gridItem', gridItemNode);
+        const gridItemImgElem = /**@type {HTMLImageElement} */(requireElem('.gridItemImg', gridItemNode));
+        
+        if (episode.thumbURL) {
+          gridItemImgElem.src = episode.thumbURL;
+        }
+        else {
+          gridItemImgElem.remove();
+        }
+        
+        const playlistVideoIndex = videoFilepaths.length;
+        videoFilepaths.push(episode.videoFilepath);
+        
+        if (playlistState.videoIndex > playlistVideoIndex) {
+          gridItemElem.classList.add('watched');
+        }
+        
+        gridElem.appendChild(gridItemElem);
+        navItems.push({
+          elem: gridItemElem,
+          action: () => {
+            if (playlistState.videoIndex !== playlistVideoIndex) {
+              playlistState.videoIndex = playlistVideoIndex;
+              playlistState.videoElapsedSec = 0;
+              savePlaylistState(playlistState);
+            }
+            new PlayerScreen(videoFilepaths, playlistState).show();
+          }
+        });
+      }
+    }
+    
+    episodeCountElem.innerText = `${totalEpisodeCount} episode${totalEpisodeCount !== 1? 's' : ''}`;
+    
+    const navList = new NavigatableList(navItems, GRID_NUM_COLUMNS, true);
+    navList.setActiveItem(0, false);
+    
+    super(screenElem);
+    this.navList = navList;
+  }
+  
+  /**
+   * @param {KeyboardEvent} event
+   * @param {string | undefined} keyAction
+   */
+  handleKey(event, keyAction) {
+    switch (keyAction) {
+      case 'BACK':
+        if (event.repeat) return 2;
+        this.close();
+        return 2;
+      case 'SELECT':
+        if (event.repeat) return 2;
+        this.navList.performActiveAction(event);
+        return 1;
+      case 'LEFT':
+        this.navList.move(-1, 0);
+        return 1;
+      case 'RIGHT':
+        this.navList.move(1, 0);
+        return 1;
+      case 'UP':
+        if (this.navList.activeItem?.y === 0) {
+          this.elem.scrollTo({
+            behavior: 'smooth',
+            top: 0
+          });
+          return 1;
+        }
+        this.navList.move(0, -1);
+        return 1;
+      case 'DOWN':
+        this.navList.move(0, 1);
         return 1;
     }
     return super.handleKey(event, keyAction);
@@ -1282,38 +1435,48 @@ function init() {
     return;
   }
   
-  /** @type {Movie[]} */
-  let movies = [];
-  for (const movie of Array.isArray(movieLibraryConfig.movies)? movieLibraryConfig.movies : []) {
-    movies.push({
-      title: movie.title || '',
-      titleSortStr: movie.titleSortStr || '',
-      setName: movie.setName || '',
-      setNameSortStr: movie.setNameSortStr || '',
-      year: movie.year || '',
-      premiereDateISOStr: movie.premiereDateISOStr || '',
-      plot: movie.plot || '',
-      tagline: movie.tagline || '',
-      rating: movie.rating || '',
-      genres: movie.genres || [],
-      directorNames: movie.directorNames || [],
-      actorNames: movie.actorNames || [],
-      hasSubtitles: movie.hasSubtitles || false,
-      runtimeMinutes: movie.runtimeMinutes || 0,
-      thumbURL: movie.thumbURL || '',
-      logoURL: movie.logoURL || '',
-      keyartURL: movie.keyartURL || '',
-      videoFilepath: movie.videoFilepath || '',
-    });
-  }
+  const movies = (movieLibraryConfig.movies || []).map(x => {
+    /** @type {Movie} */
+    const movie = {
+      id: x.id || '',
+      title: x.title || '',
+      titleSortStr: x.titleSortStr || '',
+      setName: x.setName || '',
+      setNameSortStr: x.setNameSortStr || '',
+      year: x.year || '',
+      premiereDateISOStr: x.premiereDateISOStr || '',
+      plot: x.plot || '',
+      tagline: x.tagline || '',
+      rating: x.rating || '',
+      genres: x.genres || [],
+      directorNames: x.directorNames || [],
+      actorNames: x.actorNames || [],
+      studioNames: x.studioNames || [],
+      hasSubtitles: x.hasSubtitles || false,
+      runtimeMinutes: x.runtimeMinutes || 0,
+      thumbURL: x.thumbURL || '',
+      logoURL: x.logoURL || '',
+      keyartURL: x.keyartURL || '',
+      videoFilepath: x.videoFilepath || '',
+    };
+    return movie;
+  });
   
   if (!movies.length) {
     errorAlertElem.innerText = 'Error: Configuration contains no movies.';
     return;
   }
   
+  /** @type {Movie[]} */
+  const parentMovies = [];
   if (cWindow.movieLibraryFilter) {
-    movies = movies.filter(cWindow.movieLibraryFilter);
+    for (let i = 0; i < movies.length; ++i) {
+      if (!cWindow.movieLibraryFilter(movies[i])) {
+        parentMovies.push(movies[i]);
+        movies.splice(i, 1);
+        --i;
+      }
+    }
   }
   
   if (!movies.length) {
@@ -1325,65 +1488,262 @@ function init() {
     movies.sort(cWindow.movieLibrarySort);
   }
   
+  const tvShows = (movieLibraryConfig.tvShows || []).map(x => {
+    /** @type {TVShow} */
+    const tvShow = {
+      id: x.id || '',
+      title: x.title || '',
+      titleSortStr: x.titleSortStr || '',
+      episodeOrderingType: x.episodeOrderingType || 'default',
+      year: x.year || '',
+      premiereDateISOStr: x.premiereDateISOStr || '',
+      plot: x.plot || '',
+      rating: x.rating || '',
+      genres: x.genres || [],
+      runtimeMinutes: x.runtimeMinutes || 0,
+      actorNames: x.actorNames || [],
+      studioNames: x.studioNames || [],
+      thumbURL: x.thumbURL || '',
+      logoURL: x.logoURL || '',
+      posterURL: x.posterURL || '',
+      seasons: (x.seasons || []).map(x => {
+        /** @type {Season} */
+        const season = {
+          seasonNumber: x.seasonNumber || 0,
+          episodes: (x.episodes || []).map(x => {
+            /** @type {Episode} */
+            const episode = {
+              id: x.id || '',
+              title: x.title || '',
+              seasonNumber: x.seasonNumber || 0,
+              episodeNumber: x.episodeNumber || 0,
+              dvdEpisodeNumber: x.dvdEpisodeNumber || 0,
+              specialSeasonNumber: x.specialSeasonNumber || 0,
+              specialEpisodeNumber: x.specialEpisodeNumber || 0,
+              specialAfterSeasonNumber: x.specialAfterSeasonNumber || 0,
+              episodeOrd: x.episodeOrd || 0,
+              airedDateISOStr: x.airedDateISOStr || '',
+              year: x.year || '',
+              plot: x.plot || '',
+              runtimeMinutes: x.runtimeMinutes || 0,
+              directorNames: x.directorNames || [],
+              actorNames: x.actorNames || [],
+              thumbURL: x.thumbURL || '',
+              videoFilepath: x.videoFilepath || '',
+            };
+            return episode;
+          })
+        };
+        return season;
+      }),
+    };
+    return tvShow;
+  });
+  
   if (!movieLibraryConfig.enableMouseAtStart) {
     navController.useKeyboardNav();
   }
   
   const testPaths = Array(10).fill(0).map((_,i) => `C:\\Users\\Mike\\Downloads\\thing${i+1}.mp4`);
   const tvPaths = String.raw`
-M:\Bumpers\bumpworthy\8535 - Toonami 3.0 Intro 11.mp4
-M:\TV\Aqua Teen Hunger Force\Season 03\S03E10 - Dusty Gozongas.mp4
-M:\Bumpers\bumpworthy\3751 - Please Enjoy Responsibly.mp4
-M:\Bumpers\bumpworthy\6983 - Call of Duty Playing Stats.mp4
-M:\Bumpers\bumpworthy\4082 - Hollywoodland Remakes.mp4
-M:\TV\King of the Hill\Season 03\S03E16 - Jon Vitti Presents - Return to La Grunta.mp4
-M:\Bumpers\bumpworthy\6339 - Spinning Pretty Faces.mp4
-M:\Bumpers\bumpworthy\8245 - Tagged Videos - Desert Rainbow.mp4
-M:\Bumpers\bumpworthy\5690 - Toonami Now FMA Brotherhood 06.mp4
-M:\TV\Robot Chicken\Season 05\S05E02 - Terms of Endaredevil.mp4
-M:\Bumpers\bumpworthy\5627 - Toonami FMA Brotherhood Next 14.mp4
-M:\TV\King of the Hill\Season 03\S03E17 - Escape from Party Island.mp4
-M:\Bumpers\bumpworthy\8685 - Toonami 3.0 One Piece 15.mp4
-M:\Bumpers\bumpworthy\7685 - Toonami 2.0 Now Naruto Shippuden 3.mp4
-M:\TV\King of the Hill\Season 03\S03E18 - Love Hurts and So Does Art.mp4
-M:\Bumpers\bumpworthy\8714 - King of the Hill Bystander Carmax.mp4
+M:\Bumpers\bumpworthy\7177 - Toonami 2.0 Akira To Ads 1.mp4
+M:\Bumpers\bumpworthy\3546 - Eagleheart Stats 2.mp4
+M:\Bumpers\bumpworthy\2367 - Television Closed.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump1169.mp4
+M:\TV\Robot Chicken\Season 04\04.11 - We Are a Humble Factory.mp4
+M:\Bumpers\bumpworthy\5984 - AS Picks for Super Bowl XLVII.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump270.mp4
+M:\TV\Squidbillies\Season 11\11.07 - Tortuga de Mentiras.mp4
+M:\Bumpers\bumpworthy\5413 - Voting Via the Internet.mp4
+M:\Bumpers\bumpworthy\1560 - Punch Bay.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump1232.mp4
+M:\TV\Death Note\Season 01\01.32 - Selection.mp4
+M:\Bumpers\bumpworthy\7340 - Toonami 2.0 FLCL 09.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump147.mp4
+M:\TV\Death Note\Season 01\01.33 - Scorn.mp4
+M:\Bumpers\bumpworthy\3647 - Flip's Tips - Tornado.mp4
+M:\Bumpers\bumpworthy\7697 - Flashing Maintenance Light.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump51.mp4
+M:\TV\The Boondocks\Season 03\03.02 - Bitches to Rags.mp4
+M:\Bumpers\bumpworthy\5731 - Toonami InuYasha Back 2.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump241.mp4
+M:\TV\King of the Hill\Season 02\02.20 - Junkie Business.mp4
+M:\Bumpers\bumpworthy\4973 - Ted Turner Commencement Speech.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump1518.mp4
+M:\TV\Ghost in the Shell\Season 02\02.06 - Excavation.mp4
 M:\Bumpers\bumpworthy\1378 - Kim at the Tokyo Anime Fair.mp4
-M:\Bumpers\bumpworthy\1798 - Do Your Shirts.mp4
-M:\TV\Squidbillies\Season 03\S03E14 - Gimmicky Magazine Show Spoof Parody About Dan Halen.mp4
-M:\Bumpers\bumpworthy\8606 - Toonami 3.0 Blue Exorcist 12.mp4
-M:\Bumpers\bumpworthy\84 - FLCL is back.mp4
-M:\TV\Robot Chicken\Season 01\S01E14 - Joint Point.mkv
-M:\Bumpers\bumpworthy\4707 - Submitted Crafts for 2012.mp4
-M:\TV\Bob's Burgers\Season 04\S04E11 - Easy Com-mercial, Easy Go-mercial.mp4
-M:\Bumpers\bumpworthy\8217 - Tagged Videos - CN No. 6 Vintage Tug.mp4
-M:\TV\Squidbillies\Season 09\S09E06 - A Walk To Dignity.mp4
-M:\Bumpers\bumpworthy\5957 - Rated AO - for Adults Only.mp4
-M:\Bumpers\bumpworthy\3904 - May 2011 New Track Samplers v3.mp4
-M:\TV\Aqua Teen Hunger Force\Season 07\S07E05 - Monster.mp4
-M:\Bumpers\bumpworthy\23 - Bearzilla!.mp4
-M:\Bumpers\bumpworthy\983 - B Diddy.mp4
-M:\Bumpers\bumpworthy\5340 - Black Dynamite Word Search.mp4
-M:\TV\Bob's Burgers\Season 04\S04E12 - The Frond Files.mp4
-M:\Bumpers\bumpworthy\6170 - Toonami Cowboy Bebop Next 19 Green.mp4
-M:\Bumpers\bumpworthy\6230 - Tense Meeting Dance.mp4
-M:\TV\Bob's Burgers\Season 04\S04E13 - Mazel-Tina.mp4
-M:\Bumpers\bumpworthy\959 - Where You Are.mp4
-M:\TV\Metalocalypse\Season 03\S03E10 - Doublebookedklok.mp4
-M:\Bumpers\bumpworthy\1843 - No Banking, No Loitering.mp4
-M:\TV\Metalocalypse\Season 04\S04E09 - Going Downklok.mp4
-M:\Bumpers\bumpworthy\3851 - Accordion - Dance 1.mp4
-M:\Bumpers\bumpworthy\5672 - NYULocal Write Up.mp4
-M:\Bumpers\bumpworthy\1371 - Venture Bros. S3 DVD.mp4
-M:\TV\Aqua Teen Hunger Force\Season 08\S08E02 - Allen (2).mp4
-M:\Bumpers\bumpworthy\7021 - Toonami 2.0 FMAB 14.mp4
-M:\TV\King of the Hill\Season 03\S03E19 - Hank's Cowboy Movie.mp4
-M:\Bumpers\bumpworthy\4729 - Staff President Picks 2012.mp4
-M:\Bumpers\bumpworthy\2792 - Watch Our Stuff v2.mp4
-M:\TV\Robot Chicken\Season 01\S01E20 - The Black Cherry.mkv
-M:\Bumpers\bumpworthy\6249 - Tweets Mar 31 2013.mp4
-M:\Bumpers\bumpworthy\7336 - Inuyasha Is Next.mp4
-M:\Bumpers\bumpworthy\2680 - 100 Best First Lines.mp4
-M:\TV\Robot Chicken\Season 03\S03E16 - Bionic Cow.mp4
+M:\Bumpers\bumpworthy\497 - AcTN Window.mp4
+M:\Bumpers\bumpworthy\7232 - Tweets Oct 06 2013 Pt 1.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump1166.mp4
+M:\TV\Ghost in the Shell\Season 02\02.07 - 239 Pu - 94.mp4
+M:\Bumpers\bumpworthy\1617 - Massive Clearance.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump1180.mp4
+M:\TV\Squidbillies\Season 03\03.09 - Condition Demolition!.mp4
+M:\Bumpers\bumpworthy\126 - We Want In.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump1275.mp4
+M:\TV\The Boondocks\Season 03\03.03 - The Red Ball.mp4
+M:\Bumpers\bumpworthy\8517 - Toonami 3.0 Space Dandy 8.mp4
+M:\Bumpers\bumpworthy\1583 - For The Troops.mp4
+M:\Bumpers\bumpworthy\4628 - Eastern Seaboard ISS Image.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump1109.mp4
+M:\TV\King of the Hill\Season 02\02.21 - Life in the Fast Lane Bobby's Saga.mp4
+M:\Bumpers\bumpworthy\635 - Bump Strike is Back.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump179.mp4
+M:\TV\Robot Chicken\Season 01\Robot Chicken S01E07 - A Piece of the Action.mkv
+M:\Bumpers\bumpworthy\4827 - PSA - Cat Throwing Distance.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump1298.mp4
+M:\TV\Tim and Eric Awesome Show, Great Job!\Season 05\05.06 - Lucky.mp4
+M:\Bumpers\bumpworthy\6805 - A-1 White Greatest Idea Ever.mp4
+M:\Bumpers\bumpworthy\4292 - AS Character Face Swaps.mp4
+M:\Bumpers\bumpworthy\1613 - Old Gregg.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump149.mp4
+M:\TV\Aqua Teen Hunger Force\Season 03\03.04 - Gee Whiz.mp4
+M:\Bumpers\bumpworthy\1123 - Portuguese Wave Farm.mp4
+M:\Bumpers\bumpworthy\5494 - Tweets Sep 30 2012 Pt 1.mp4
+M:\Bumpers\bumpworthy\8680 - Toonami 3.0 Cowboy Bebop 1.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump1342.mp4
+M:\TV\Metalocalypse\Season 01\01.03 - Birthdayface.mp4
+M:\Bumpers\bumpworthy\7616 - Toonami 2.0 IGPX 34.mp4
+M:\Bumpers\bumpworthy\1148 - Shotglass Travels - Year Two.mp4
+M:\Bumpers\bumpworthy\8526 - Facebook Plans for Second Network.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump10.mp4
+M:\TV\Robot Chicken\Season 04\04.09 - But Not in That Way.mp4
+M:\Bumpers\bumpworthy\8423 - Want to See Our Tiny Gentleman.mp4
+M:\Bumpers\bumpworthy\8411 - Toonami 3.0 Space Dandy 3.mp4
+M:\Bumpers\bumpworthy\1379 - PSA - Your Cat.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump1057.mp4
+M:\TV\Metalocalypse\Season 04\04.11 - Breakup Klok.mp4
+M:\Bumpers\bumpworthy\8396 - Toonami 3.0 Naruto 5.mp4
+M:\Bumpers\bumpworthy\1782 - Rare Apology.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump522.mp4
+M:\TV\Squidbillies\Season 09\09.04 - Ink is Thicker Than Blood, Which is Thicker Than Water.mp4
+M:\Bumpers\bumpworthy\8364 - Coast to Coast Crowd Wave Pt 2.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump1414.mp4
+M:\TV\Death Note\Season 01\01.34 - Vigilance.mp4
+M:\Bumpers\bumpworthy\772 - Marine Hierarchy.mp4
+M:\Bumpers\bumpworthy\7057 - Molyneux's Digital Cube.mp4
+M:\Bumpers\bumpworthy\5416 - RIP Max the Cat.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump971.mp4
+M:\TV\Tim and Eric Awesome Show, Great Job!\Season 05\05.01 - Comedy.mp4
+M:\Bumpers\bumpworthy\388 - Holidays - Beard Family 1.mp4
+M:\Bumpers\bumpworthy\6908 - SDCC 2013 Fun House Pics.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump271.mp4
+M:\TV\Ghost in the Shell\Season 02\02.08 - Fake Food.mp4
+M:\Bumpers\bumpworthy\794 - Ringtones.mp4
+M:\Bumpers\bumpworthy\2057 - Adult Swim is for Conan.mp4
+M:\Bumpers\bumpworthy\3466 - Animated Logo - Mine Carts.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump168.mp4
+M:\TV\King of the Hill\Season 02\02.22 - Peggy's Turtle Song.mp4
+M:\Bumpers\bumpworthy\7753 - Toonami 2.0 IGPX 43.mp4
+M:\Bumpers\bumpworthy\6652 - Toonami 2.0 FMAB 03.mp4
+M:\Bumpers\bumpworthy\3415 - Anime Transport v2.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump209.mp4
+M:\TV\The Boondocks\Season 03\03.04 - Stinkmeaner 3 The Hateocracy.mp4
+M:\Bumpers\bumpworthy\6478 - Toonami 2.0 Now Bleach 01.mp4
+M:\Bumpers\bumpworthy\1682 - Stewie is Gay.mp4
+M:\Bumpers\bumpworthy\5897 - Toonami InuYasha Next 07.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump1201.mp4
+M:\TV\Aqua Teen Hunger Force\Season 02\02.19 - Frat Aliens.mp4
+M:\Bumpers\bumpworthy\7695 - Fish in a Tank Fan Bump.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump1055.mp4
+M:\TV\Ghost in the Shell\Season 02\02.09 - Ambivalence.mp4
+M:\Bumpers\bumpworthy\1657 - Needless Big Words.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump618.mp4
+M:\TV\Metalocalypse\Season 03\03.02 - Tributeklok.mp4
+M:\Bumpers\bumpworthy\8397 - Toonami 3.0 Naruto 6.mp4
+M:\Bumpers\bumpworthy\7429 - Toonami 2.0 Cowboy Bebop Marathon Intro.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump871.mp4
+M:\TV\Tim and Eric Awesome Show, Great Job!\Season 01\01.01 - Dads.mp4
+M:\Bumpers\bumpworthy\7116 - Toonami 2.0 IGPX 21.mp4
+M:\Bumpers\bumpworthy\5628 - Toonami InuYasha Next 01 v1.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump1449.mp4
+M:\TV\Death Note\Season 01\01.35 - Malice.mp4
+M:\Bumpers\bumpworthy\6851 - Toonami 2.0 Naruto To Ads 04.mp4
+M:\Bumpers\bumpworthy\2546 - Science Essay - The Moon.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump1155.mp4
+M:\TV\Robot Chicken\Season 07\07.05 - Legion of Super-Gyros.mp4
+M:\Bumpers\bumpworthy\6889 - Fog Blast.mp4
+M:\Bumpers\bumpworthy\6919 - SDCC 2013 Yes or No Pics.mp4
+M:\Bumpers\bumpworthy\4416 - Pollo de Robot Facts.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump1103.mp4
+M:\TV\Squidbillies\Season 06\06.04 - The Big E.mp4
+M:\Bumpers\bumpworthy\7220 - Returned Wallet Experiment.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump230.mp4
+M:\TV\The Boondocks\Season 03\03.05 - Smokin' With Cigarettes.mp4
+M:\Bumpers\bumpworthy\7219 - Idiot World Map.mp4
+M:\Bumpers\bumpworthy\3236 - Eagleheart Stats 1.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump807.mp4
+M:\TV\King of the Hill\Season 02\02.23 - Propane Boom I.mp4
+M:\Bumpers\bumpworthy\3678 - Owls - Hiding in Tree.mp4
+M:\Bumpers\bumpworthy\482 - ATHF Clips.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump1484.mp4
+M:\TV\Metalocalypse\Season 02\02.05 - Dethfashion.mp4
+M:\Bumpers\bumpworthy\1386 - Baby Kudzu.mp4
+M:\Bumpers\bumpworthy\4382 - Itsyourface Viewer Bump.mp4
+M:\Bumpers\bumpworthy\711 - And the ShotGlass winner is.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump195.mp4
+M:\TV\Aqua Teen Hunger Force\Season 08\08.03 - Intervention.mp4
+M:\Bumpers\bumpworthy\6933 - Apologize for Overuse of Word.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump303.mp4
+M:\TV\Metalocalypse\Season 04\04.07 - Dethcamp.mp4
+M:\Bumpers\bumpworthy\1730 - AFC Games.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump1087.mp4
+M:\TV\Ghost in the Shell\Season 02\02.10 - Trial.mp4
+M:\Bumpers\bumpworthy\2603 - Schedule Change Conclusion.mp4
+M:\Bumpers\bumpworthy\7172 - Toonami 2.0 Intro 32.mp4
+M:\Bumpers\bumpworthy\6020 - Toonami Now FMA Brotherhood 09.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump1159.mp4
+M:\TV\Squidbillies\Season 05\05.04 - Young, Dumb and Full of Gums.mp4
+M:\Bumpers\bumpworthy\4993 - Toonami Cowboy Bebop Back 1.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump544.mp4
+M:\TV\Robot Chicken\Season 02\02.13 - Metal Militia.mp4
+M:\Bumpers\bumpworthy\2306 - No More Big Words.mp4
+M:\Bumpers\bumpworthy\1777 - Movie Poster Fonts.mp4
+M:\Bumpers\bumpworthy\7184 - Toonami 2.0 Akira To Ads 4.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump1106.mp4
+M:\TV\Death Note\Season 01\01.36 - 1.28.mp4
+M:\Bumpers\bumpworthy\6878 - Toonami 2.0 IGPX 11.mp4
+M:\Bumpers\bumpworthy\1242 - Buy ATHF Vol. 6.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump1097.mp4
+M:\TV\Tim and Eric Awesome Show, Great Job!\Season 03\03.04 - Spagett.mp4
+M:\Bumpers\bumpworthy\670 - Futurama - Bending Shadows v3.mp4
+M:\Bumpers\bumpworthy\6102 - A Series of Very Young Explosions.mp4
+M:\Bumpers\bumpworthy\856 - Dear Kid Robot.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump1508.mp4
+M:\TV\King of the Hill\Season 03\03.01 - Propane Boom II Death of a Propane Salesman.mp4
+M:\Bumpers\bumpworthy\5876 - Tweets Dec 23 2012.mp4
+M:\Bumpers\bumpworthy\4060 - EmotionallyVague Research 1.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump769.mp4
+M:\TV\The Boondocks\Season 03\03.06 - The Fundraiser.mp4
+M:\Bumpers\bumpworthy\2173 - Freaknik - Awards.mp4
+M:\Bumpers\bumpworthy\4144 - Adult Swim Timeline 4.mp4
+M:\Bumpers\bumpworthy\2286 - Aqua Teen or Bed.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump482.mp4
+M:\TV\Robot Chicken\Season 09\09.08 - We Don't See Much of That in 1940's America.mp4
+M:\Bumpers\bumpworthy\6288 - Meow Meow - Mecha Cat 2.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump765.mp4
+M:\TV\King of the Hill\Season 03\03.02 - And They Call It Bobby Love.mp4
+M:\Bumpers\bumpworthy\8498 - Toonami 3.0 Bleach 8.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump1491.mp4
+M:\TV\Aqua Teen Hunger Force\Season 06\06.09 - The Last Last One Forever and Ever.mp4
+M:\Bumpers\bumpworthy\7807 - If You Were a Spider Question.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump1446.mp4
+M:\TV\Aqua Teen Hunger Force\Season 03\03.01 - Video Ouija.mp4
+M:\Bumpers\bumpworthy\573 - Ghostface Killah.mp4
+M:\Bumpers\bumpworthy\5342 - Corddry Ready to Tweet.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump409.mp4
+M:\TV\Squidbillies\Season 04\04.10 - Not Without My Cash Cow!.mp4
+M:\Bumpers\bumpworthy\258 - Science Department.mp4
+M:\Bumpers\bumpworthy\7601 - Behold the Snow Falcon.mp4
+M:\Bumpers\bumpworthy\7817 - Tweets Mar 23 2014 Pt 2.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump620.mp4
+M:\TV\Ghost in the Shell\Season 02\02.11 - Affection.mp4
+M:\Bumpers\bumpworthy\1058 - RC Season 3.5.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump953.mp4
+M:\TV\The Boondocks\Season 03\03.07 - Pause.mp4
+M:\Bumpers\bumpworthy\227 - Mermaid Murder.mp4
+M:\Bumpers\Ambient Swim Bumpers\bump1434.mp4
+M:\TV\Death Note\Season 01\01.37 - New World.mp4
   `.split('\n').map(x => x.trim()).filter(x => x);
   // for (let i = 0; i < tvPaths.length - 1; ++i) {
   //   const count = 1 + Math.floor(Math.random() * 3);
@@ -1393,39 +1753,59 @@ M:\TV\Robot Chicken\Season 03\S03E16 - Bionic Cow.mp4
   //   }
   // }
   
-  new MenuScreen([{
-    title: 'Movies',
+  // new MenuScreen([{
+  //   title: 'Movies',
+  //   action: () => new GridScreen(movies.map(movie => ({
+  //     title: movie.title,
+  //     imageURL: movie.thumbURL,
+  //     action: () => new DetailScreen(movie).show()
+  //   }))).show()
+  // }, {
+  //   title: 'TV',
+  //   action: () => new PinScreen('1111', () =>
+  //     new GridScreen([
+  //       {title: 'Test1', action: () => new PlayerScreen(`C:\\Users\\Mike\\Downloads\\test.mp4`).show()},
+  //       {title: 'Test2', action: () => new PlayerScreen(`C:\\Users\\Mike\\Downloads\\test2.mp4`).show()},
+  //       {title: 'Test3', action: () => new PlayerScreen(`M:\\TV\\Ambient Swim\\bumps\\bump${Math.floor(Math.random()*1521)}.mp4`).show()},
+  //       {title: 'Test4', action: () => new PlayerScreen(`C:\\Users\\Mike\\Downloads\\The Office (US) (2005) - S01E01 - Pilot (1080p AMZN WEB-DL x265 LION).mkv`).show()},
+  //       {title: 'Test5', action: () => new PlayerScreen(tvPaths/*, getPlaylistState('test-tv2')*/).show()},
+  //     ]).show()
+  //   ).show()
+  // }]).show();
+  
+   new MenuScreen([{
+    title: 'Kids',
     action: () => new GridScreen(movies.map(movie => ({
       title: movie.title,
       imageURL: movie.thumbURL,
       action: () => new DetailScreen(movie).show()
     }))).show()
-  }, {
-    title: 'TV',
-    action: () => new PinScreen('1111', () =>
-      new GridScreen([
-        {title: 'Test1', action: () => new PlayerScreen(`C:\\Users\\Mike\\Downloads\\test.mp4`).show()},
-        {title: 'Test2', action: () => new PlayerScreen(`C:\\Users\\Mike\\Downloads\\test2.mp4`).show()},
-        {title: 'Test3', action: () => new PlayerScreen(`M:\\TV\\Ambient Swim\\bumps\\bump${Math.floor(Math.random()*1521)}.mp4`).show()},
-        {title: 'Test4', action: () => new PlayerScreen(`C:\\Users\\Mike\\Downloads\\The Office (US) (2005) - S01E01 - Pilot (1080p AMZN WEB-DL x265 LION).mkv`).show()},
-        {title: 'Test5', action: () => new PlayerScreen(tvPaths/*, getPlaylistState('test-tv2')*/).show()},
-      ]).show()
+   }, {
+    title: 'Parents',
+    action: () => new PinScreen('1141', () =>
+      new MenuScreen([{
+        title: 'Movies',
+        action: () => new GridScreen(parentMovies.map(movie => ({
+          title: movie.title,
+          imageURL: movie.thumbURL,
+          action: () => new DetailScreen(movie).show()
+        }))).show()
+      }, {
+        title: 'Shows',
+        action: () => new GridScreen(tvShows.map(tvShow => ({
+          title: tvShow.title,
+          imageURL: tvShow.thumbURL,
+          action: () => new TVShowScreen(tvShow).show()
+        }))).show()
+      }, {
+        title: 'TV',
+        action: () => new PlayerScreen(
+          tvPaths,
+          getPlaylistState('tv-adult'),
+        ).show()
+      }], true).show()
     ).show()
   }]).show();
-  
-  // new MenuScreen([{
-  //   title: 'Movie',
-  //   action: () => new PlayerScreen(testPaths[1]).show()
-  // }, {
-  //   title: 'Show',
-  //   action: () => new PlayerScreen(testPaths.slice(2,7), getPlaylistState('test')).show()
-  // }, {
-  //   title: 'TV',
-  //   action: () => new PlayerScreen(
-  //     tvPaths,
-  //     //getPlaylistState('test-tv')
-  //   ).show()
-  // }]).show();
   
   // Register key listener.
   window.addEventListener('keydown', event => {

@@ -12,7 +12,7 @@
     "project": "jsconfig.json"
   },
   "env": {
-    "es6": true,
+    "es2020": true,
     "node": false,
     "browser": true
   },
@@ -130,6 +130,7 @@
     "@typescript-eslint/no-unsafe-call": "off",
     "@typescript-eslint/no-unsafe-member-access": "off",
     "@typescript-eslint/no-unsafe-return": "off",
+    "@typescript-eslint/no-unsafe-argument": "off",
     "@typescript-eslint/prefer-string-starts-ends-with": "error",
     "@typescript-eslint/member-delimiter-style": "error",
     "@typescript-eslint/naming-convention": [
@@ -159,20 +160,10 @@
         "format": ["PascalCase"]
       },
       {
-        "selector": "interface",
-        "prefix": ["I"],
-        "format": ["PascalCase"]
-      },
-      {
-        "selector": "enum",
-        "prefix": ["E"],
-        "format": ["PascalCase"]
-      },
-      {
         "selector": "enumMember",
         "format": ["UPPER_CASE"]
       }
-    ]
+    ],
     
     // --- Project Specific ---
   }

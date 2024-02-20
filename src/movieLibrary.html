@@ -50,10 +50,50 @@
     </main>
   </template>
   
+  <template id="tvShowScreenTemplate">
+    <main class="screen gridScreen">
+      <div class="screenBody">
+        <div class="detailContainer">
+          <div class="detailBackgroundImgContainer">
+            <img class="fadeAfterLoading" />
+            <div></div>
+          </div>
+          <img class="detailLogo" class="fadeAfterLoading" />
+          <div class="detailTopPanel">
+            <div class="detailTopPanelIcons">
+              <img class="ratingImg" />
+              <span>
+                <span class="mediaYear"></span> • <span class="episodeCount"></span>
+              </span>
+            </div>
+            <!-- <p class="detailTopPanelDesc"></p> -->
+          </div>
+          <template>
+            <div class="season">
+              <div class="detailNav">
+                <div class="detailNavItem"></div>
+              </div>
+              <div class="grid">
+                <template>
+                  <div class="gridItem">
+                    <div>
+                      <img class="gridItemImg" />
+                      <svg class="watchedSVG" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><path style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-width:2px;" d="m7.61,2.31c.7.68,1.14,1.64,1.14,2.69,0,2.07-1.68,3.75-3.75,3.75s-3.75-1.68-3.75-3.75,1.68-3.75,3.75-3.75"/></svg>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+    </main>
+  </template>
+  
   <template id="detailScreenTemplate">
     <main class="screen detailScreen">
       <div class="screenBody">
-        <div>
+        <div class="detailContainer">
           <div class="detailBackgroundImgContainer">
             <img class="fadeAfterLoading" />
             <div></div>
@@ -64,10 +104,10 @@
               <img class="ratingImg" />
               <img class="closedCaptionsImg" src="assets/cc.png" />
               <span>
-                <span class="movieYear"></span> • <span class="runtime"></span>
+                <span class="mediaYear"></span> • <span class="runtime"></span>
               </span>
             </div>
-            <div class="detailTopPanelGeneres" class="generes"></div>
+            <div class="detailTopPanelGeneres"></div>
             <div class="detailTopPanelButtons">
               <button class="backButton">BACK</button>
               <button class="playButton">
@@ -78,11 +118,11 @@
             <p class="detailTopPanelDesc"></p>
           </div>
           <div class="detailNav">
-            <div class="detailNavItem selected">
+            <div class="detailNavItem">
               DETAILS
             </div>
           </div>
-          <h1 class="movieTitle"></h1>
+          <h1 class="mediaTitle"></h1>
           <div class="detailBottomPannel">
             <div class="detailBottomPannelLeft">
               <div>
@@ -91,7 +131,7 @@
               </div>
               <div>
                 <p class="secondaryTextColor">Release date:</p>
-                <p class="movieYear"></p>
+                <p class="mediaYear"></p>
               </div>
               <div>
                 <p class="secondaryTextColor">Genre:</p>
