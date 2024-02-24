@@ -163,7 +163,7 @@
         "selector": "enumMember",
         "format": ["UPPER_CASE"]
       }
-    ],
+    ]
     
     // --- Project Specific ---
   }

@@ -49,14 +49,16 @@ for (let i = 0; i <=9; ++i) {
 
 /**
  * @typedef NavListItemDef
+ * @property {string} [slug]
  * @property {HTMLElement} [elem]
- * @property {(event?: KeyboardEvent | MouseEvent) => void} [action]
+ * @property {(event: KeyboardEvent | MouseEvent | undefined, navItem: NavListItem) => void} [action]
  * @property {boolean} [isDisabled]
  */
 /**
  * @typedef NavListItem
+ * @property {string} [slug]
  * @property {HTMLElement} [elem]
- * @property {(event?: KeyboardEvent | MouseEvent) => void} [action]
+ * @property {(event: KeyboardEvent | MouseEvent | undefined, navItem: NavListItem) => void} [action]
  * @property {number} index
  * @property {number} x
  * @property {number} y
@@ -110,6 +112,7 @@ class NavigatableList {
     for (let i = 0; i < itemDefs.length; ++i) {
       /** @type {NavListItem} */
       const item = {
+        slug: itemDefs[i].slug,
         elem: itemDefs[i].elem,
         action: itemDefs[i].action,
         index: i,
@@ -118,13 +121,13 @@ class NavigatableList {
         isDisabled: false,
       };
       if (itemDefs[i].isDisabled) {
-        NavigatableList.#_setItemIsDisabled(item, true);
+        NavigatableList.#setItemIsDisabled(item, true);
       }
       
       // Add listeners for mouse events.
       item.elem?.addEventListener('click', event => {
         this.setActiveItem(item.index, false);
-        item.action?.(event);
+        item.action?.(event, item);
       });
       item.elem?.addEventListener('mouseenter', () => {
         this.setActiveItem(item.index, false);
@@ -221,7 +224,7 @@ class NavigatableList {
    * @param {NavListItem} item 
    * @param {boolean} isDisabled 
    */
-  static #_setItemIsDisabled(item, isDisabled) {
+  static #setItemIsDisabled(item, isDisabled) {
     item.isDisabled = isDisabled;
     item.elem?.classList.toggle('disabled', isDisabled);
   }
@@ -231,14 +234,23 @@ class NavigatableList {
    * @param {boolean} isDisabled
    */
   setItemIsDisabled(index, isDisabled) {
-    NavigatableList.#_setItemIsDisabled(this.items[index], isDisabled);
+    NavigatableList.#setItemIsDisabled(this.items[index], isDisabled);
   }
   
-  /** @param {KeyboardEvent | MouseEvent} event */
+  /** @param {KeyboardEvent | MouseEvent} [event] */
   performActiveAction(event) {
     if (!this.activeItem) return;
     if (this.activeItem.isDisabled) return;
-    this.activeItem.action?.(event);
+    this.activeItem.action?.(event, this.activeItem);
+    return this.activeItem;
+  }
+  
+  /** @param {string} slug  */
+  activateAndPerformSlug(slug) {
+    const index = this.items.findIndex(x => x.slug === slug);
+    if (index === -1) return;
+    this.setActiveItem(index);
+    return this.performActiveAction();
   }
   
   hideActiveItem() {
@@ -260,6 +272,8 @@ const playerScreenTemplate = /** @type {HTMLTemplateElement} */(requireElem('#pl
 
 /** @type {Screen[]} */
 const screens = [];
+/** @type {string[]} */
+let deeplinkSlugs = [];
 
 class Screen {
   /**
@@ -310,6 +324,11 @@ class Screen {
     return 0;
   }
   
+  /** @param {string} slug */
+  handleDeeplinkSlug(slug) {
+    // noop
+  }
+  
   /**
    * @returns {this}
    */
@@ -339,6 +358,12 @@ class Screen {
       this.transitionAnimation.addEventListener('finish', () => {
         pinScreen.close();
       });
+    }
+    
+    if (deeplinkSlugs.length > 0) {
+      const slug = /** @type {typeof deeplinkSlugs[number]} */(deeplinkSlugs.shift());
+      this.handleDeeplinkSlug(slug);
+      deeplinkSlugs = [];
     }
     
     return this;
@@ -394,7 +419,7 @@ class Screen {
  * @typedef MenuItem
  * @property {string} title
  * @property {string} [imageURL]
- * @property {(screen: Screen) => void} action
+ * @property {() => void} action
  */
 
 class MenuScreen extends Screen {
@@ -447,8 +472,9 @@ class MenuScreen extends Screen {
       
       gridElem.appendChild(gridItemElem);
       navItems.push({
+        slug: menuItem.title,
         elem: gridItemElem,
-        action: () => menuItem.action(this),
+        action: () => menuItem.action(),
       });
     }
     
@@ -481,6 +507,11 @@ class MenuScreen extends Screen {
         return 1;
     }
     return super.handleKey(event, keyAction);
+  }
+  
+  /** @param {string} slug  */
+  handleDeeplinkSlug(slug) {
+    this.navList.activateAndPerformSlug(slug);
   }
 }
 
@@ -537,8 +568,9 @@ class GridScreen extends Screen {
       
       gridElem.appendChild(gridItemElem);
       navItems.push({
+        slug: menuItem.title,
         elem: gridItemElem,
-        action: () => menuItem.action(this)
+        action: () => menuItem.action()
       });
     }
     
@@ -577,6 +609,11 @@ class GridScreen extends Screen {
         return 1;
     }
     return super.handleKey(event, keyAction);
+  }
+  
+  /** @param {string} slug  */
+  handleDeeplinkSlug(slug) {
+    this.navList.activateAndPerformSlug(slug);
   }
 }
 
@@ -790,6 +827,7 @@ class TVShowScreen extends Screen {
         
         gridElem.appendChild(gridItemElem);
         navItems.push({
+          slug: episode.id,
           elem: gridItemElem,
           action: () => {
             if (playlistState.videoIndex !== playlistVideoIndex) {
@@ -848,12 +886,17 @@ class TVShowScreen extends Screen {
     }
     return super.handleKey(event, keyAction);
   }
+  
+  /** @param {string} slug  */
+  handleDeeplinkSlug(slug) {
+    this.navList.activateAndPerformSlug(slug);
+  }
 }
 
 class PinScreen extends Screen {
   /**
    * @param {string} pin 
-   * @param {(screen: Screen) => void} action 
+   * @param {() => void} action 
    */
   constructor(pin, action) {
     if (pin.length === 0) throw new Error(`Pin cannot be empty.`);
@@ -967,7 +1010,7 @@ class PinScreen extends Screen {
     
     if (this.pinInputStr.length < this.pin.length) return;
     if (this.pinInputStr === this.pin) {
-      this.action(this);
+      this.action();
     }
     else {
       this.pinInputStr = '';
@@ -1036,6 +1079,12 @@ class PinScreen extends Screen {
         return 1;
     }
     return super.handleKey(event, keyAction);
+  }
+  
+  /** @param {string} slug  */
+  handleDeeplinkSlug(slug) {
+    if (slug !== 'x') return;
+    this.action();
   }
 }
 
@@ -1454,7 +1503,7 @@ function init() {
       studioNames: x.studioNames || [],
       hasSubtitles: x.hasSubtitles || false,
       runtimeMinutes: x.runtimeMinutes || 0,
-      thumbURL: x.thumbURL || '',
+      thumbURL: x.thumbURL || (x.videoFilepath || '').replace(/^\/mnt\/m\//, 'file:///M:\\').replaceAll('/', '\\').replace(/\.(mp4|mkv|avi)$/, '-landscape.jpg'),
       logoURL: x.logoURL || '',
       keyartURL: x.keyartURL || '',
       videoFilepath: x.videoFilepath || '',
@@ -1528,7 +1577,7 @@ function init() {
               runtimeMinutes: x.runtimeMinutes || 0,
               directorNames: x.directorNames || [],
               actorNames: x.actorNames || [],
-              thumbURL: x.thumbURL || '',
+              thumbURL: x.thumbURL || (x.videoFilepath || '').replace(/^\/mnt\/m\//, 'file:///M:\\').replaceAll('/', '\\').replace(/\.(mp4|mkv|avi)$/, '-thumb.jpg'),
               videoFilepath: x.videoFilepath || '',
             };
             return episode;
@@ -1543,6 +1592,12 @@ function init() {
   if (!movieLibraryConfig.enableMouseAtStart) {
     navController.useKeyboardNav();
   }
+  
+  deeplinkSlugs = (
+    window.location.hash.substring(1)
+    .split('/')
+    .map(x => decodeURIComponent(x))
+  );
   
   const testPaths = Array(10).fill(0).map((_,i) => `C:\\Users\\Mike\\Downloads\\thing${i+1}.mp4`);
   const tvPaths = String.raw`

@@ -3,7 +3,7 @@
     "../.eslintrc.json"
   ],
   "parserOptions": {
-    "project": "jsconfig.json"
+    "project": "tools/jsconfig.json"
   },
   "env": {
     "es2020": true,
