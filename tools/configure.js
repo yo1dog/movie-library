@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+// eslint-disable-next-line @typescript-eslint/naming-convention
 const {XMLParser} = require('fast-xml-parser');
 
 const enableGridNavWrap = false;
@@ -22,6 +23,7 @@ const xmlParser = new XMLParser({
 /** @typedef {import('../src/assets/types').Config} Config */
 /** @typedef {import('../src/assets/types').Movie} Movie */
 /** @typedef {import('../src/assets/types').TVShow} TVShow */
+/** @typedef {import('../src/assets/types').EpisodeBase} EpisodeBase */
 /** @typedef {import('../src/assets/types').Episode} Episode */
 
 createConfig();
@@ -63,7 +65,7 @@ function createConfig() {
     movies,
     tvShows,
   };
-  const configJSON = JSON.stringify(config, (key, val) => !val || (Array.isArray(val) && val.length === 0)? undefined : val);
+  const configJSON = JSON.stringify(config, (key, val) => (!val || (Array.isArray(val) && val.length === 0)? undefined : val));
   const configJS = 'window.movieLibraryConfig = ' + configJSON + ';';
   fs.writeFileSync(path.join(__dirname, '..', 'src', 'config.js'), configJS, 'utf8');
 }
@@ -194,10 +196,10 @@ function loadTVShow(nfoDirent, dir, dirents) {
       return;
     }
     
-    /** @type {Omit<Episode, 'episodeOrd' | 'thumbURL' | 'videoFilepath'>[]} */
-    const partialEpisodes = [];
+    /** @type {EpisodeBase[]} */
+    const episodeBases = [];
     for (const node of nodes) {
-      partialEpisodes.push({
+      episodeBases.push({
         id: (
           node.uniqueid?.find(x => x._attr?.type === 'tvdb') ||
           node.uniqueid?.find(x => x._attr?.type === 'imdb') ||
@@ -224,33 +226,35 @@ function loadTVShow(nfoDirent, dir, dirents) {
     
     /** @type {Episode} */
     let episode;
-    if (partialEpisodes.length === 1) {
+    if (episodeBases.length === 1) {
       episode = {
-        ...partialEpisodes[0],
+        ...episodeBases[0],
         episodeOrd: 0,
         thumbURL,
-        videoFilepath
+        videoFilepath,
+        multiepisodeBases: [],
       };
     }
     else {
       episode = {
-        id: partialEpisodes.map(x => x.id).join('/'),
-        title: partialEpisodes.map(x => x.title).join(' / '),
-        seasonNumber: partialEpisodes[0].seasonNumber,
-        episodeNumber: partialEpisodes[0].episodeNumber,
-        dvdEpisodeNumber: partialEpisodes[0].dvdEpisodeNumber,
-        specialSeasonNumber: partialEpisodes[0].specialSeasonNumber,
-        specialEpisodeNumber: partialEpisodes[0].specialEpisodeNumber,
-        specialAfterSeasonNumber: partialEpisodes[0].specialAfterSeasonNumber,
+        id: episodeBases.map(x => x.id).join('/'),
+        title: episodeBases.map(x => x.title).join(' / '),
+        seasonNumber: episodeBases[0].seasonNumber,
+        episodeNumber: episodeBases[0].episodeNumber,
+        dvdEpisodeNumber: episodeBases[0].dvdEpisodeNumber,
+        specialSeasonNumber: episodeBases[0].specialSeasonNumber,
+        specialEpisodeNumber: episodeBases[0].specialEpisodeNumber,
+        specialAfterSeasonNumber: episodeBases[0].specialAfterSeasonNumber,
         episodeOrd: 0,
-        airedDateISOStr: partialEpisodes[0].airedDateISOStr,
-        year: partialEpisodes[0].year,
-        plot: partialEpisodes.map(x => `S${x.seasonNumber}.E${x.episodeNumber} ${x.title}:\n${x.plot}`).join('\n\n'),
-        runtimeMinutes: partialEpisodes.map(x => x.runtimeMinutes).reduce((sum, x) => sum + x),
-        directorNames: partialEpisodes.map(x => x.directorNames).reduce((arr, x) => arr.concat(x)).filter((x, i, a) => a.indexOf(x) === i),
-        actorNames: partialEpisodes.map(x => x.actorNames).reduce((arr, x) => arr.concat(x)).filter((x, i, a) => a.indexOf(x) === i),
+        airedDateISOStr: episodeBases[0].airedDateISOStr,
+        year: episodeBases[0].year,
+        plot: episodeBases.map(x => `S${x.seasonNumber}.E${x.episodeNumber} ${x.title}:\n${x.plot}`).join('\n\n'),
+        runtimeMinutes: episodeBases[0].runtimeMinutes,//episodeBases.map(x => x.runtimeMinutes).reduce((sum, x) => sum + x),
+        directorNames: episodeBases.map(x => x.directorNames).reduce((arr, x) => arr.concat(x)).filter((x, i, a) => a.indexOf(x) === i),
+        actorNames: episodeBases.map(x => x.actorNames).reduce((arr, x) => arr.concat(x)).filter((x, i, a) => a.indexOf(x) === i),
         thumbURL,
         videoFilepath,
+        multiepisodeBases: episodeBases,
       };
     }
     
@@ -270,7 +274,7 @@ function loadTVShow(nfoDirent, dir, dirents) {
     const episodeOrd = (
       tvShow.episodeOrderingType === 'dvd'? dvdEpisodeNum :
       airBeforeEpisodeNum
-      ? (airBeforeEpisodeNum - 1) * 1000 + episodeNum
+      ? ((airBeforeEpisodeNum - 1) * 1000) + episodeNum
       : episodeNum * 1000
     );
     episode.episodeOrd = episodeOrd;

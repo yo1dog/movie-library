@@ -45,7 +45,7 @@ export interface Season {
   episodes: Episode[];
 }
 
-export interface Episode {
+export interface EpisodeBase {
   id: string;
   title: string;
   seasonNumber: number;
@@ -54,22 +54,26 @@ export interface Episode {
   specialSeasonNumber: number;
   specialEpisodeNumber: number;
   specialAfterSeasonNumber: number;
-  episodeOrd: number;
   airedDateISOStr: string;
   year: string;
   plot: string;
   runtimeMinutes: number;
   directorNames: string[];
   actorNames: string[];
+}
+export interface Episode extends EpisodeBase {
+  episodeOrd: number;
   thumbURL: string;
   videoFilepath: string;
+  multiepisodeBases: EpisodeBase[];
 }
 
+type PartialDeep<T> = T extends any[]? PartialDeep<T[number]>[] : T extends object? {[P in keyof T]?: PartialDeep<T[P]>} : T;
 export interface Config {
  enableGridNavWrap?: boolean;
  enableMouseAtStart?: boolean;
- movies: Partial<Movie>[];
- tvShows: (Omit<Partial<TVShow>, 'seasons'> & {seasons?: (Omit<Partial<Season>, 'episodes'> & {episodes?: Partial<Episode>[]})[]})[];
+ movies: PartialDeep<Movie>[];
+ tvShows: PartialDeep<TVShow>[];
 }
 
 export interface CustomWindow {

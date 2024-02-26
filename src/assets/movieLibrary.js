@@ -15,13 +15,25 @@ const PLAYER_SKIP_LARGE_DURATION_S = 5*60;
 
 /** @type {Record<string, string>} */
 const RATING_IMG_URL_DICT = {
-  'G': 'assets/rating-g.png',
-  'PG': 'assets/rating-pg.png',
-  'PG-13': 'assets/rating-pg13.png',
-  'R': 'assets/rating-r.png',
+  'g': 'assets/rating-g.png',
+  'pg': 'assets/rating-pg.png',
+  'pg13': 'assets/rating-pg13.png',
+  'r': 'assets/rating-r.png',
+  'tvy': 'assets/rating-tvy.png',
+  'tvy7': 'assets/rating-tvy7.png',
+  'tvg': 'assets/rating-tvg.png',
+  'tvpg': 'assets/rating-tvpg.png',
+  'tv14': 'assets/rating-tv14.png',
+  'tvma': 'assets/rating-tvma.png',
 };
-for (const rating in RATING_IMG_URL_DICT) {
-  RATING_IMG_URL_DICT[`Rated ${rating}`] = RATING_IMG_URL_DICT[rating];
+/** @param {string} rating  */
+function getRatingImgURL(rating) {
+  return RATING_IMG_URL_DICT[
+    rating
+    .toLowerCase()
+    .replace(/^rating/, '')
+    .replace(/[ -]/, '')
+  ];
 }
 
 /** @typedef {'BACK'|'SELECT'|'LEFT'|'RIGHT'|'UP'|'DOWN'|'DIGIT'} KeyAction  */
@@ -448,6 +460,7 @@ class MenuScreen extends Screen {
     for (const menuItem of menuItems) {
       const gridItemNode = /** @type {DocumentFragment} */(gridItemTemplate.content.cloneNode(true));
       const gridItemElem = requireElem('.gridItem', gridItemNode);
+      const gridItemTileElem = requireElem('.gridItemTile', gridItemNode);
       const gridItemTextElem = requireElem('.gridItemText', gridItemNode);
       const gridItemImgElem = /**@type {HTMLImageElement} */(requireElem('.gridItemImg', gridItemNode));
       
@@ -473,7 +486,7 @@ class MenuScreen extends Screen {
       gridElem.appendChild(gridItemElem);
       navItems.push({
         slug: menuItem.title,
-        elem: gridItemElem,
+        elem: gridItemTileElem,
         action: () => menuItem.action(),
       });
     }
@@ -538,6 +551,7 @@ class GridScreen extends Screen {
     for (const menuItem of menuItems) {
       const gridItemNode = /** @type {DocumentFragment} */(gridItemTemplate.content.cloneNode(true));
       const gridItemElem = requireElem('.gridItem', gridItemNode);
+      const gridItemTileElem = requireElem('.gridItemTile', gridItemNode);
       const gridItemTextElem = requireElem('.gridItemText', gridItemNode);
       const gridItemImgElem = /**@type {HTMLImageElement} */(requireElem('.gridItemImg', gridItemNode));
       
@@ -569,7 +583,7 @@ class GridScreen extends Screen {
       gridElem.appendChild(gridItemElem);
       navItems.push({
         slug: menuItem.title,
-        elem: gridItemElem,
+        elem: gridItemTileElem,
         action: () => menuItem.action()
       });
     }
@@ -654,7 +668,7 @@ class DetailScreen extends Screen {
     }
     
     ratingImgElems.forEach(x => {
-      const url = movie.rating? RATING_IMG_URL_DICT[movie.rating] : '';
+      const url = movie.rating? getRatingImgURL(movie.rating) : '';
       x.src = url;
       x.alt = movie.rating;
       if (!url) x.style.height = 'auto';
@@ -743,7 +757,7 @@ class TVShowScreen extends Screen {
     const frag = /** @type {DocumentFragment} */(tvShowScreenTemplate.content.cloneNode(true));
     const screenElem = requireElem('main', frag);
     
-    const containerElem = requireElem('.detailContainer', screenElem);
+    const screenBodyElem = requireElem('.screenBody', frag);
     const detailBackgroundImgElem = /** @type {HTMLImageElement} */(requireElem('.detailBackgroundImgContainer img', screenElem));
     const detailLogoElem = /** @type {HTMLImageElement} */(requireElem('.detailLogo', screenElem));
     const ratingImgElem = /** @type {HTMLImageElement} */(requireElem('.ratingImg', screenElem));
@@ -765,7 +779,7 @@ class TVShowScreen extends Screen {
     }
     
     if (tvShow.rating) {
-      const ratingImgURL = RATING_IMG_URL_DICT[tvShow.rating] || '';
+      const ratingImgURL = getRatingImgURL(tvShow.rating) || '';
       ratingImgElem.src = ratingImgURL;
       ratingImgElem.alt = tvShow.rating;
       if (!ratingImgURL) ratingImgElem.style.height = 'auto';
@@ -804,12 +818,17 @@ class TVShowScreen extends Screen {
       const detailNavItemElem = requireElem('.detailNavItem', seasonFrag);
       detailNavItemElem.innerText = season.seasonNumber === 0? 'Specials' : `Season ${season.seasonNumber}`;
       
-      containerElem.appendChild(seasonElem);
+      screenBodyElem.appendChild(seasonElem);
       
       for (const episode of season.episodes) {
         const gridItemNode = /** @type {DocumentFragment} */(gridItemTemplate.content.cloneNode(true));
         const gridItemElem = requireElem('.gridItem', gridItemNode);
+        const gridItemTileElem = requireElem('.gridItemTile', gridItemNode);
         const gridItemImgElem = /**@type {HTMLImageElement} */(requireElem('.gridItemImg', gridItemNode));
+        const gridItemEpisodeNumElem = requireElem('.gridItemTitleContainer .episodeNum', gridItemNode);
+        const gridItemTitleElem = requireElem('.gridItemTitleContainer .title', gridItemNode);
+        const gridItemRuntimeElem = requireElem('.gridItemTitleContainer .runtime', gridItemNode);
+        // const gridItemDescriptionElem = requireElem('.gridItemDescription', gridItemNode);
         
         if (episode.thumbURL) {
           gridItemImgElem.src = episode.thumbURL;
@@ -817,6 +836,61 @@ class TVShowScreen extends Screen {
         else {
           gridItemImgElem.remove();
         }
+        
+        const isSpecial = !episode.seasonNumber;
+        if (isSpecial) {
+          gridItemEpisodeNumElem.classList.add('special');
+          gridItemEpisodeNumElem.innerText = 'SPECIAL: ';
+        }
+        else if (episode.episodeNumber) {
+          if (episode.multiepisodeBases.length > 0) {
+            gridItemEpisodeNumElem.innerText = episode.multiepisodeBases.map(x =>
+              (x.seasonNumber !== episode.seasonNumber? `s${x.seasonNumber}e` : '')
+              + x.episodeNumber.toString()
+            ).join(',') + '. ';
+          }
+          else {
+            gridItemEpisodeNumElem.innerText = `${episode.episodeNumber}. `;
+          }
+        }
+        else {
+          gridItemEpisodeNumElem.remove();
+        }
+        
+        if (episode.multiepisodeBases.length > 0) {
+          const normalizedTitles = episode.multiepisodeBases.map(x => x.title.replace(/\s*\(?(p|part)?\s*\d+\)?$/, ''));
+          let allSameTitle = true;
+          for (let i = 1; i < normalizedTitles.length; ++i) {
+            if (normalizedTitles[i] !== normalizedTitles[0]) {
+              allSameTitle = false;
+              break;
+            }
+          }
+          if (allSameTitle) {
+            gridItemTitleElem.innerText = normalizedTitles[0];
+          }
+          else {
+            gridItemTitleElem.innerText = episode.multiepisodeBases.map(x => x.title).join(' / ');
+          }
+        }
+        else {
+          gridItemTitleElem.innerText = episode.title;
+        }
+        
+        if (episode.runtimeMinutes) {
+          gridItemRuntimeElem.innerHTML = `&nbsp;`;
+          gridItemRuntimeElem.innerText += `(${episode.runtimeMinutes}m)`;
+        }
+        else {
+          gridItemRuntimeElem.remove();
+        }
+        
+        // if (!episode.plot) {
+        //   gridItemDescriptionElem.remove();
+        // }
+        // else {
+        //   gridItemDescriptionElem.innerText = episode.plot;
+        // }
         
         const playlistVideoIndex = videoFilepaths.length;
         videoFilepaths.push(episode.videoFilepath);
@@ -828,7 +902,7 @@ class TVShowScreen extends Screen {
         gridElem.appendChild(gridItemElem);
         navItems.push({
           slug: episode.id,
-          elem: gridItemElem,
+          elem: gridItemTileElem,
           action: () => {
             if (playlistState.videoIndex !== playlistVideoIndex) {
               playlistState.videoIndex = playlistVideoIndex;
@@ -1560,8 +1634,8 @@ function init() {
         const season = {
           seasonNumber: x.seasonNumber || 0,
           episodes: (x.episodes || []).map(x => {
-            /** @type {Episode} */
-            const episode = {
+            /** @param {Partial<import('./types').EpisodeBase>} x */
+            const mapEpisodeBase = (x) => ({
               id: x.id || '',
               title: x.title || '',
               seasonNumber: x.seasonNumber || 0,
@@ -1570,15 +1644,20 @@ function init() {
               specialSeasonNumber: x.specialSeasonNumber || 0,
               specialEpisodeNumber: x.specialEpisodeNumber || 0,
               specialAfterSeasonNumber: x.specialAfterSeasonNumber || 0,
-              episodeOrd: x.episodeOrd || 0,
               airedDateISOStr: x.airedDateISOStr || '',
               year: x.year || '',
               plot: x.plot || '',
               runtimeMinutes: x.runtimeMinutes || 0,
               directorNames: x.directorNames || [],
               actorNames: x.actorNames || [],
+            });
+            /** @type {Episode} */
+            const episode = {
+              ...mapEpisodeBase(x),
+              episodeOrd: x.episodeOrd || 0,
               thumbURL: x.thumbURL || (x.videoFilepath || '').replace(/^\/mnt\/m\//, 'file:///M:\\').replaceAll('/', '\\').replace(/\.(mp4|mkv|avi)$/, '-thumb.jpg'),
               videoFilepath: x.videoFilepath || '',
+              multiepisodeBases: (x.multiepisodeBases || []).map(mapEpisodeBase),
             };
             return episode;
           })
@@ -1828,7 +1907,7 @@ M:\TV\Death Note\Season 01\01.37 - New World.mp4
   //   ).show()
   // }]).show();
   
-   new MenuScreen([{
+  new MenuScreen([{
     title: 'Kids',
     action: () => new GridScreen(movies.map(movie => ({
       title: movie.title,

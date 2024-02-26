@@ -87,10 +87,10 @@ body {
 .gridItem {
   /* required to be in parent for chrome due to hidden overflow */
   scroll-margin: 150px;
-  user-select: none;
 }
-.gridItem > div {
+.gridItemTile {
   aspect-ratio: 16/9;
+  user-select: none;
   cursor: pointer;
   overflow: hidden;
   position: relative;
@@ -101,7 +101,7 @@ body {
   transition-property: transform, box-shadow;
 }
 /** Overlapping border that appears when active. */
-.gridItem > div::after {
+.gridItemTile::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -110,21 +110,21 @@ body {
   border-color: transparent;
   transition-property: border-color;
 }
-.gridItem > div,
-.gridItem > div::after {
+.gridItemTile,
+.gridItemTile::after {
   border-radius: 5px;
   transition-duration: 300ms;
   transition-timing-function: ease-out;
 }
-.keyboardNav .gridItem.active > div,
-.mouseNav .gridItem:hover > div {
+.keyboardNav .active .gridItemTile,
+.mouseNav .gridItemTile:hover {
   box-shadow: rgba(0,0,0,0.8) 0 40px 58px -16px, rgba(0,0,0,0.72) 0 30px 22px -10px;
   transform: scale(1.05);
   transition-duration: 300ms;
   transition-timing-function: ease-out;
 }
-.keyboardNav .gridItem.active > div::after,
-.mouseNav .gridItem:hover > div::after {
+.keyboardNav .active .gridItemTile::after,
+.mouseNav .gridItemTile:hover::after {
   border-color: rgba(249,249,249,0.8);
 }
 
@@ -158,12 +158,60 @@ body {
   width: 100%;
   height: 100%;
 }
-.gridItemImg.logo {
-  object-fit: contain;
-  padding: 5px;
+
+.gridItem .watchedSVG {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: none;
+  text-align: center;
+  justify-content: space-evenly;
+  align-items: center;
+  padding: 15%;
+  opacity: 0.5;
+}
+.gridItem.watched .watchedSVG {
+  display: flex;
+}
+.gridItem.watched img {
+  opacity: 0.25;
+}
+
+.gridItemTitleContainer {
+  font-size: 15px;
+  line-height: 1.6;
+  padding-top: 10px;
+  margin: 0;
+  text-shadow: 1pt 1pt 3pt #000;
+}
+.gridItemTitleContainer .episodeNum {
+  font-weight: 600;
+}
+.gridItemTitleContainer .episodeNum.special {
+  color: #ffee33;
+}
+.gridItemTitleContainer .title {
+  font-weight: 600;
+}
+.gridItemDescription {
+  font-size: 12px;
+  line-height: 1.5;
+  padding-top: 6px;
+  margin: 0;
+}
+
+.gridItemTitleContainer,
+.gridItemDescription {
+  position: relative;
+  z-index: 1;
 }
 
 .gridScreen .grid {
+  padding: 8px 0;
+}
+
+.tvShowScreen .grid {
   padding: 8px 0;
 }
 
@@ -346,26 +394,6 @@ body {
 .season {
   margin-bottom: 25pt;
 }
-.gridItem .watchedSVG {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  display: none;
-  text-align: center;
-  justify-content: space-evenly;
-  align-items: center;
-  padding: 15%;
-  font-size: 2vw;
-  overflow: hidden;
-  opacity: 0.5;
-}
-.gridItem.watched .watchedSVG {
-  display: flex;
-}
-.gridItem.watched img {
-  opacity: 0.25;
-}
 
 .pinScreen .screenBody {
   height: 100%;
@@ -390,15 +418,15 @@ body {
   max-width: 75pt;
   pointer-events: none;
 }
-.pinChar > div {
+.pinChar .gridItemTile {
   aspect-ratio: 1;
   background: linear-gradient(rgb(18, 19, 23), rgba(30, 31, 42, 0));
   display: flex;
   justify-content: center;
   align-items: center;
 }
-.pinChar > div,
-.pinChar > div::after {
+.pinChar .gridItemTile,
+.pinChar .gridItemTile::after {
   border-radius: 25%;
 }
 
@@ -422,11 +450,11 @@ body {
   grid-template-columns: repeat(3, minmax(auto, 75pt));
   gap: 1vw;
 }
-.numpad .gridItem > div {
+.numpad .gridItemTile {
   aspect-ratio: 1;
 }
-.numpad .gridItem > div,
-.numpad .gridItem > div::after {
+.numpad .gridItemTile,
+.numpad .gridItemTile::after {
   border-radius: 25%;
 }
 .numpad .gridItemText {
@@ -552,7 +580,7 @@ body {
   background: rgb(34, 130, 255);
   margin-top: -4pt;
   border: none;
-  border-radius: 0;
+  border-radius: 1pt;
 }
 .playerScrubber::-moz-range-track {
   box-shadow: rgba(0,0,0,0.5) 0pt 1pt 5pt 1pt;
@@ -572,5 +600,5 @@ body {
   background: rgb(34, 130, 255);
   margin-top: -4pt;
   border: none;
-  border-radius: 0;
+  border-radius: 1pt;
 }
