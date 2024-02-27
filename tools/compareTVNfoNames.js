@@ -52,6 +52,7 @@ const results = nfos.map(nfo => {
 fs.writeFileSync('/tmp/orig', results.map(x => x[0]).join('\n'), 'utf8');
 fs.writeFileSync('/tmp/expected', results.map(x => x[1]).join('\n'), 'utf8');
 
+/** @param {string} str */
 function makeFilenameFriendly(str) {
   return (
     str
@@ -62,6 +63,7 @@ function makeFilenameFriendly(str) {
     .replace(/[/]/g, '-')
     .replace(/[<>:"/\\|?*]+/g, '')
     .replace(/[^ -~]+/g, '')
+    .substring(0, 115)
     .replace(/[\s.]+$/, '')
     .replace(/^\s+/, '')
   );

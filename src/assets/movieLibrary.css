@@ -34,7 +34,7 @@ pointer-events on html, body, main, or screenBody, the cursor will not hide...
 html.keyboardNav {
   cursor: none;
 }
-.screenBody {
+.screenBodyPadding {
   padding: 0 calc(3.5vw + 32px);
 }
 .keyboardNav .screenBody {
@@ -183,7 +183,7 @@ body {
   line-height: 1.6;
   padding-top: 10px;
   margin: 0;
-  text-shadow: 1pt 1pt 3pt #000;
+  /* text-shadow: 1pt 1pt 3pt #000; */
 }
 .gridItemTitleContainer .episodeNum {
   font-weight: 600;
@@ -391,8 +391,11 @@ body {
   margin-bottom: 8px;
 }
 
+.seasonsContainer {
+  background: linear-gradient(transparent, rgba(26, 29, 41, 0.75) 150pt);
+}
 .season {
-  margin-bottom: 25pt;
+  padding-bottom: 25pt;
 }
 
 .pinScreen .screenBody {

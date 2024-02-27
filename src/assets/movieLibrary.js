@@ -11,6 +11,7 @@ const PLAYER_CONTROLS_TIMEOUT_PLAY_MS = 1000;
 const PLAYER_SKIP_SMALL_DURATION_S = 10;
 const PLAYER_SKIP_MEDIUM_DURATION_S = 30;
 const PLAYER_SKIP_LARGE_DURATION_S = 5*60;
+const MEANINGFUL_CONTINUOUS_PLAY_DURATION_S = 60;
 // ------------------------
 
 /** @type {Record<string, string>} */
@@ -63,6 +64,7 @@ for (let i = 0; i <=9; ++i) {
  * @typedef NavListItemDef
  * @property {string} [slug]
  * @property {HTMLElement} [elem]
+ * @property {HTMLElement} [interactiveElem]
  * @property {(event: KeyboardEvent | MouseEvent | undefined, navItem: NavListItem) => void} [action]
  * @property {boolean} [isDisabled]
  */
@@ -70,6 +72,7 @@ for (let i = 0; i <=9; ++i) {
  * @typedef NavListItem
  * @property {string} [slug]
  * @property {HTMLElement} [elem]
+ * @property {HTMLElement} [interactiveElem]
  * @property {(event: KeyboardEvent | MouseEvent | undefined, navItem: NavListItem) => void} [action]
  * @property {number} index
  * @property {number} x
@@ -126,6 +129,7 @@ class NavigatableList {
       const item = {
         slug: itemDefs[i].slug,
         elem: itemDefs[i].elem,
+        interactiveElem: itemDefs[i].interactiveElem || itemDefs[i].elem,
         action: itemDefs[i].action,
         index: i,
         x: i % this.numColumns,
@@ -137,11 +141,11 @@ class NavigatableList {
       }
       
       // Add listeners for mouse events.
-      item.elem?.addEventListener('click', event => {
+      item.interactiveElem?.addEventListener('click', event => {
         this.setActiveItem(item.index, false);
         item.action?.(event, item);
       });
-      item.elem?.addEventListener('mouseenter', () => {
+      item.interactiveElem?.addEventListener('mouseenter', () => {
         this.setActiveItem(item.index, false);
       });
       
@@ -288,6 +292,9 @@ const screens = [];
 let deeplinkSlugs = [];
 
 class Screen {
+  /** @type {(() => void) | undefined} */
+  #onHidingCB;
+  
   /**
    * @param {HTMLElement} elem 
    */
@@ -381,6 +388,11 @@ class Screen {
     return this;
   }
   
+  /** @param {(() => void) | undefined} cb */
+  setOnHideStartCB(cb) {
+    this.onHideStartCB = cb;
+  }
+  
   hide() {
     if (screens.length === 1) return;
     if (!this.isShown) return;
@@ -397,6 +409,7 @@ class Screen {
     }
     
     this.isShown = false;
+    this.onHideStartCB?.();
     
     if (!this.transitionAnimation.currentTime) {
       return;
@@ -486,7 +499,8 @@ class MenuScreen extends Screen {
       gridElem.appendChild(gridItemElem);
       navItems.push({
         slug: menuItem.title,
-        elem: gridItemTileElem,
+        elem: gridItemElem,
+        interactiveElem: gridItemTileElem,
         action: () => menuItem.action(),
       });
     }
@@ -531,8 +545,9 @@ class MenuScreen extends Screen {
 class GridScreen extends Screen {
   /**
    * @param {MenuItem[]} menuItems
+   * @param {boolean} [enableWrap]
    */
-  constructor(menuItems) {
+  constructor(menuItems, enableWrap) {
     const frag = /** @type {DocumentFragment} */(gridScreenTemplate.content.cloneNode(true));
     const screenElem = requireElem('main', frag);
     const gridElem = requireElem('.grid', screenElem);
@@ -583,12 +598,13 @@ class GridScreen extends Screen {
       gridElem.appendChild(gridItemElem);
       navItems.push({
         slug: menuItem.title,
-        elem: gridItemTileElem,
+        elem: gridItemElem,
+        interactiveElem: gridItemTileElem,
         action: () => menuItem.action()
       });
     }
     
-    const navList = new NavigatableList(navItems, GRID_NUM_COLUMNS);
+    const navList = new NavigatableList(navItems, GRID_NUM_COLUMNS, enableWrap);
     navList.setActiveItem(0, false);
     
     super(screenElem);
@@ -702,7 +718,7 @@ class DetailScreen extends Screen {
       action: () => this.close()
     }, {
       elem: playButtonElem,
-      action: () => movie.videoFilepath && playVideo(movie.videoFilepath)
+      action: () => new PlayerScreen(movie.videoFilepath).show()
     }]);
     navList.setActiveItem(1, false);
     
@@ -757,14 +773,24 @@ class TVShowScreen extends Screen {
     const frag = /** @type {DocumentFragment} */(tvShowScreenTemplate.content.cloneNode(true));
     const screenElem = requireElem('main', frag);
     
-    const screenBodyElem = requireElem('.screenBody', frag);
+    const backButtonElem = requireElem('.backButton', screenElem);
+    const playButtonElem = requireElem('.playButton', screenElem);
+    const playButtonLabelElem = requireElem('span', playButtonElem);
     const detailBackgroundImgElem = /** @type {HTMLImageElement} */(requireElem('.detailBackgroundImgContainer img', screenElem));
     const detailLogoElem = /** @type {HTMLImageElement} */(requireElem('.detailLogo', screenElem));
     const ratingImgElem = /** @type {HTMLImageElement} */(requireElem('.ratingImg', screenElem));
     const mediaYearElem = requireElem('.mediaYear', screenElem);
     const episodeCountElem = requireElem('.episodeCount', screenElem);
     // const detailTopPanelDesc = requireElem('.detailTopPanelDesc', screenElem);
+    const seasonsContainerElem = requireElem('.seasonsContainer', screenElem);
     const seasonTemplate = /** @type {HTMLTemplateElement} */(screenElem.getElementsByTagName('TEMPLATE')[0]);
+    
+    const playlistState = getPlaylistState(`tvshow-${tvShow.id}`);
+    
+    /** @type {{episode: Episode; gridItemElem: HTMLElement}[]} */
+    const playlistEpisodes = [];
+    /** @type {string[]} */
+    const playlistVideoFilepaths = [];
     
     detailBackgroundImgElem.src = tvShow.posterURL;
     detailLogoElem.alt = tvShow.title;
@@ -791,21 +817,62 @@ class TVShowScreen extends Screen {
     mediaYearElem.innerText = tvShow.year;
     // detailTopPanelDesc.innerText = tvShow.plot;
     
-    /** @type {NavListItemDef[]} */
-    const navItems = [];
-    /** @type {string[]} */
-    const videoFilepaths = [];
-    const playlistState = getPlaylistState(`tvshow-${tvShow.id}`);
+    /** @param {number} [playlistIndex] */
+    function startPlayer(playlistIndex) {
+      new PlayerScreen(playlistVideoFilepaths, {
+        playlistState,
+        delayStateUpdate: true,
+        initalPlaylistPosition: (
+          playlistIndex === undefined || playlistIndex === playlistState.videoIndex
+          ? undefined
+          : {index: playlistIndex}
+        )
+      })
+      .show()
+      .setOnHideStartCB(() => updatePlaylistStateUI());
+    }
     
-    let totalEpisodeCount = 0;
-    for (const season of tvShow.seasons) {
-      totalEpisodeCount += season.episodes.length;
+    function updatePlaylistStateUI() {
+      // if (playlistState.videoIndex === 0 && playlistState.videoElapsedSec === 0) {
+      //   playButtonLabelElem.innerText = 'START';
+      // }
+      // else {
+      //   let label = 'RESUME';
+      //   const episode = playlistEpisodes[playlistState.videoIndex]?.episode;
+      //   if (episode) {
+      //     label += ` S${episode.seasonNumber}E${episode.episodeNumber}`;
+      //   }
+      //   playButtonLabelElem.innerText = label;
+      // }
+      playButtonLabelElem.innerText = (
+        playlistState.videoIndex === 0 && playlistState.videoElapsedSec === 0
+        ? 'START'
+        : 'RESUME'
+      );
       
-      const remainder = navItems.length % GRID_NUM_COLUMNS;
-      if (remainder > 0) {
-        for (let i = remainder; i < GRID_NUM_COLUMNS; ++i) {
-          navItems.push({isDisabled: true});
-        }
+      for (let i = 0; i < playlistEpisodes.length; ++i) {
+        playlistEpisodes[i].gridItemElem.classList.toggle(
+          'watched',
+          playlistState.videoIndex > i
+        );
+      }
+    }
+    
+    /** @type {NavListItemDef[]} */
+    const navItems = [{
+      elem: backButtonElem,
+      action: () => this.close()
+    }, {
+      elem: playButtonElem,
+      action: () => startPlayer()
+    }];
+    while (navItems.length % GRID_NUM_COLUMNS > 0) {
+      navItems.push({isDisabled: true});
+    }
+    
+    for (const season of tvShow.seasons) {
+      while (navItems.length % GRID_NUM_COLUMNS > 0) {
+        navItems.push({isDisabled: true});
       }
       
       const seasonFrag = /** @type {DocumentFragment} */(seasonTemplate.content.cloneNode(true));
@@ -818,7 +885,7 @@ class TVShowScreen extends Screen {
       const detailNavItemElem = requireElem('.detailNavItem', seasonFrag);
       detailNavItemElem.innerText = season.seasonNumber === 0? 'Specials' : `Season ${season.seasonNumber}`;
       
-      screenBodyElem.appendChild(seasonElem);
+      seasonsContainerElem.appendChild(seasonElem);
       
       for (const episode of season.episodes) {
         const gridItemNode = /** @type {DocumentFragment} */(gridItemTemplate.content.cloneNode(true));
@@ -844,10 +911,34 @@ class TVShowScreen extends Screen {
         }
         else if (episode.episodeNumber) {
           if (episode.multiepisodeBases.length > 0) {
-            gridItemEpisodeNumElem.innerText = episode.multiepisodeBases.map(x =>
-              (x.seasonNumber !== episode.seasonNumber? `s${x.seasonNumber}e` : '')
-              + x.episodeNumber.toString()
-            ).join(',') + '. ';
+            let episodeNumStr = episode.multiepisodeBases[0].episodeNumber.toString();
+            let didSkip = false;
+            for (let i = 1; i < episode.multiepisodeBases.length; ++i) {
+              const cur = episode.multiepisodeBases[i];
+              const prv = episode.multiepisodeBases[i - 1];
+              
+              if (cur.seasonNumber === episode.seasonNumber && cur.episodeNumber === prv.episodeNumber + 1) {
+                didSkip = true;
+                continue;
+              }
+              
+              if (didSkip) {
+                episodeNumStr += '-' + prv.episodeNumber;
+              }
+              didSkip = false;
+              
+              episodeNumStr += ', ';
+              
+              if (cur.seasonNumber !== episode.seasonNumber) {
+                episodeNumStr += `S${cur.seasonNumber}E`;
+              }
+              episodeNumStr += cur.episodeNumber;
+            }
+            if (didSkip) {
+              episodeNumStr += '-' + episode.multiepisodeBases[episode.multiepisodeBases.length - 1].episodeNumber;
+            }
+            
+            gridItemEpisodeNumElem.innerText = `${episodeNumStr}. `;
           }
           else {
             gridItemEpisodeNumElem.innerText = `${episode.episodeNumber}. `;
@@ -892,33 +983,26 @@ class TVShowScreen extends Screen {
         //   gridItemDescriptionElem.innerText = episode.plot;
         // }
         
-        const playlistVideoIndex = videoFilepaths.length;
-        videoFilepaths.push(episode.videoFilepath);
-        
-        if (playlistState.videoIndex > playlistVideoIndex) {
-          gridItemElem.classList.add('watched');
-        }
+        const playlistIndex = playlistEpisodes.length;
+        playlistEpisodes.push({episode, gridItemElem});
+        playlistVideoFilepaths.push(episode.videoFilepath);
         
         gridElem.appendChild(gridItemElem);
         navItems.push({
           slug: episode.id,
-          elem: gridItemTileElem,
-          action: () => {
-            if (playlistState.videoIndex !== playlistVideoIndex) {
-              playlistState.videoIndex = playlistVideoIndex;
-              playlistState.videoElapsedSec = 0;
-              savePlaylistState(playlistState);
-            }
-            new PlayerScreen(videoFilepaths, playlistState).show();
-          }
+          elem: gridItemElem,
+          interactiveElem: gridItemTileElem,
+          action: () => startPlayer(playlistIndex)
         });
       }
     }
     
-    episodeCountElem.innerText = `${totalEpisodeCount} episode${totalEpisodeCount !== 1? 's' : ''}`;
+    updatePlaylistStateUI();
+    
+    episodeCountElem.innerText = `${playlistEpisodes.length} episode${playlistEpisodes.length !== 1? 's' : ''}`;
     
     const navList = new NavigatableList(navItems, GRID_NUM_COLUMNS, true);
-    navList.setActiveItem(0, false);
+    navList.setActiveItem(1, false);
     
     super(screenElem);
     this.navList = navList;
@@ -1165,9 +1249,23 @@ class PinScreen extends Screen {
 class PlayerScreen extends Screen {
   /**
    * @param {string | string[]} videoFilepaths 
-   * @param {PlaylistState} [playlistState] 
+   * @param {object} [options] 
+   * @param {PlaylistState} [options.playlistState] 
+   * @param {boolean} [options.delayStateUpdate] 
+   * @param {{index: number; startSec?: number}} [options.initalPlaylistPosition] 
    */
-  constructor(videoFilepaths, playlistState) {
+  constructor(videoFilepaths, options = {}) {
+    const {playlistState} = options;
+    const stateUpdateReqContinuousPlayDurSec = options.delayStateUpdate? MEANINGFUL_CONTINUOUS_PLAY_DURATION_S : 0;
+    const initalPlaylistPosition = options.initalPlaylistPosition || (
+      playlistState? {
+        index: playlistState.videoIndex,
+        startSec: playlistState.videoElapsedSec,
+      } : {
+        index: 0
+      }
+    );
+    
     if (!Array.isArray(videoFilepaths)) {
       videoFilepaths = [videoFilepaths];
     }
@@ -1175,6 +1273,10 @@ class PlayerScreen extends Screen {
     let curVideoIndex;
     /** @type {boolean} */
     let isWaiting; // TODO: Should track this with video elem prop instead?
+    
+    let canUpdateState = stateUpdateReqContinuousPlayDurSec === 0;
+    let playDurAnchorTimeSec = -2;
+    //let playDurSec = 0;
     
     const frag = /** @type {DocumentFragment} */(playerScreenTemplate.content.cloneNode(true));
     const screenElem = requireElem('main', frag);
@@ -1350,11 +1452,26 @@ class PlayerScreen extends Screen {
     updateVideoDurationUI(0);
     
     const updatePlaylistState = playlistState? debounce(1000, () => {
-      playlistState.videoIndex = curVideoIndex;
-      playlistState.videoElapsedSec = videoElem.currentTime || 0;
-      savePlaylistState(playlistState);
+      if (canUpdateState) {
+        playlistState.videoIndex = curVideoIndex;
+        playlistState.videoElapsedSec = videoElem.currentTime || 0;
+        playlistState.videoElapsedPct = (videoElem.currentTime / videoElem.duration) * 100;
+        savePlaylistState(playlistState);
+      }
+      else {
+        if (playDurAnchorTimeSec === -1) {
+          playDurAnchorTimeSec = videoElem.currentTime;
+        }
+        else if (playDurAnchorTimeSec >= 0) {
+          //playDurSec += videoElem.currentTime - playDurAnchorTimeSec;
+          //playDurAnchorTimeSec = videoElem.currentTime;
+          const continuousPlayDurSec = videoElem.currentTime - playDurAnchorTimeSec;
+          if (continuousPlayDurSec >= stateUpdateReqContinuousPlayDurSec) {
+            canUpdateState = true;
+          }
+        }
+      }
     }) : () => {/*noop*/};
-    
     videoElem.addEventListener('loadedmetadata', () => {
       updateVideoTimeUI(videoElem.currentTime);
       updatePlayPauseUI();
@@ -1367,6 +1484,12 @@ class PlayerScreen extends Screen {
       updateVideoTimeUI(videoElem.currentTime);
       updatePlaylistState();
     });
+    videoElem.addEventListener('seeking', () => {
+      playDurAnchorTimeSec = -2;
+    });
+    videoElem.addEventListener('seeked', () => {
+      playDurAnchorTimeSec = -1;
+    });
     videoElem.addEventListener('play', () => {
       updatePlayPauseUI();
     });
@@ -1377,6 +1500,7 @@ class PlayerScreen extends Screen {
       updatePlayPauseUI();
     });
     videoElem.addEventListener('playing', () => {
+      playDurAnchorTimeSec = -1;
       isWaiting = false;
       updatePlayPauseUI();
     });
@@ -1391,9 +1515,9 @@ class PlayerScreen extends Screen {
       selectScrubber();
       extendControls();
     });
-    scrubberElem.addEventListener('input', () => {
+    scrubberElem.addEventListener('input', debounce(100, () => {
       setVideoTime((scrubberElem.valueAsNumber / 100) * videoElem.duration, true);
-    });
+    }));
     scrubberElem.addEventListener('keydown', event => {
       // Prevent all keyboard events from reaching this input.
       event.preventDefault();
@@ -1430,13 +1554,13 @@ class PlayerScreen extends Screen {
       isWaiting = true;
       videoElem.src = /^(\.|http)/.test(videoFilepath)? videoFilepath : 'file://' + videoFilepath;
       videoElem.load();
-      void videoElem.play();
+      //void videoElem.play();
       updatePlayPauseUI();
     }
     
-    setVideoIndex(playlistState?.videoIndex || 0);
-    if (playlistState?.videoElapsedSec) {
-      videoElem.currentTime = playlistState.videoElapsedSec;
+    setVideoIndex(initalPlaylistPosition.index);
+    if (initalPlaylistPosition.startSec) {
+      videoElem.currentTime = initalPlaylistPosition.startSec;
     }
     
     super(screenElem);
@@ -1580,6 +1704,7 @@ function init() {
       thumbURL: x.thumbURL || (x.videoFilepath || '').replace(/^\/mnt\/m\//, 'file:///M:\\').replaceAll('/', '\\').replace(/\.(mp4|mkv|avi)$/, '-landscape.jpg'),
       logoURL: x.logoURL || '',
       keyartURL: x.keyartURL || '',
+      clearartURL: x.clearartURL || '',
       videoFilepath: x.videoFilepath || '',
     };
     return movie;
@@ -1628,6 +1753,7 @@ function init() {
       studioNames: x.studioNames || [],
       thumbURL: x.thumbURL || '',
       logoURL: x.logoURL || '',
+      clearartURL: x.clearartURL || '',
       posterURL: x.posterURL || '',
       seasons: (x.seasons || []).map(x => {
         /** @type {Season} */
@@ -1655,7 +1781,7 @@ function init() {
             const episode = {
               ...mapEpisodeBase(x),
               episodeOrd: x.episodeOrd || 0,
-              thumbURL: x.thumbURL || (x.videoFilepath || '').replace(/^\/mnt\/m\//, 'file:///M:\\').replaceAll('/', '\\').replace(/\.(mp4|mkv|avi)$/, '-thumb.jpg'),
+              thumbURL: x.thumbURL || '',
               videoFilepath: x.videoFilepath || '',
               multiepisodeBases: (x.multiepisodeBases || []).map(mapEpisodeBase),
             };
@@ -1668,6 +1794,10 @@ function init() {
     return tvShow;
   });
   
+  if (cWindow.tvShowLibrarySort) {
+    tvShows.sort(cWindow.tvShowLibrarySort);
+  }
+  
   if (!movieLibraryConfig.enableMouseAtStart) {
     navController.useKeyboardNav();
   }
@@ -1678,6 +1808,7 @@ function init() {
     .map(x => decodeURIComponent(x))
   );
   
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const testPaths = Array(10).fill(0).map((_,i) => `C:\\Users\\Mike\\Downloads\\thing${i+1}.mp4`);
   const tvPaths = String.raw`
 M:\Bumpers\bumpworthy\7177 - Toonami 2.0 Akira To Ads 1.mp4
@@ -1913,7 +2044,7 @@ M:\TV\Death Note\Season 01\01.37 - New World.mp4
       title: movie.title,
       imageURL: movie.thumbURL,
       action: () => new DetailScreen(movie).show()
-    }))).show()
+    })), movieLibraryConfig?.enableGridNavWrap).show()
    }, {
     title: 'Parents',
     action: () => new PinScreen('1141', () =>
@@ -1923,20 +2054,19 @@ M:\TV\Death Note\Season 01\01.37 - New World.mp4
           title: movie.title,
           imageURL: movie.thumbURL,
           action: () => new DetailScreen(movie).show()
-        }))).show()
+        })), movieLibraryConfig?.enableGridNavWrap).show()
       }, {
         title: 'Shows',
         action: () => new GridScreen(tvShows.map(tvShow => ({
           title: tvShow.title,
           imageURL: tvShow.thumbURL,
           action: () => new TVShowScreen(tvShow).show()
-        }))).show()
+        })), movieLibraryConfig?.enableGridNavWrap).show()
       }, {
         title: 'TV',
-        action: () => new PlayerScreen(
-          tvPaths,
-          getPlaylistState('tv-adult'),
-        ).show()
+        action: () => new PlayerScreen(tvPaths, {
+          playlistState: getPlaylistState('tv-adult')
+        }).show()
       }], true).show()
     ).show()
   }]).show();
@@ -1970,14 +2100,6 @@ M:\TV\Death Note\Season 01\01.37 - New World.mp4
   errorAlertElem.style.display = 'none';
 }
 
-/** @param {string} filepath */
-function playVideo(filepath) {
-  // const url = 'movielib.player://' + filepath;
-  // console.log('Playing', url);
-  // window.open(url, '_self');
-  new PlayerScreen(filepath).show();
-}
-
 // function loadGridLastActiveItemIndex() {
 //   const indexStr = localStorage.getItem('lastGridActiveItemIndex');
 //   if (!indexStr) return;
@@ -1996,6 +2118,7 @@ function playVideo(filepath) {
  * @property {string} id
  * @property {number} videoIndex
  * @property {number} videoElapsedSec
+ * @property {number} videoElapsedPct
  */
 
 /** @type {Map<string, PlaylistState>} */
@@ -2018,6 +2141,7 @@ function getPlaylistState(playlistStateID) {
       id: playlistStateID,
       videoIndex: 0,
       videoElapsedSec: 0,
+      videoElapsedPct: 0,
     };
   }
   

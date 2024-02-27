@@ -35,7 +35,7 @@ for (let i = all.length; i > 0;) {
 require('fs').writeFileSync(
   './tmp/bumpworthyDL.ps1',
   all.map(x =>
-    `Invoke-WebRequest 'https://www.bumpworthy.com/download/video/${x[0]}' -OutFile "M:\\Bumpers\\bumpworthy\\${x[0]} - ${makeFilenameFriendly(x[1]).replace(/[`"'$()%{}\[\]]/g, s => '`'+s)}.mp4"`
+    `Invoke-WebRequest 'https://www.bumpworthy.com/download/video/${x[0]}' -OutFile "M:\\Bumpers\\bumpworthy\\${x[0]} - ${makeFilenameFriendly(x[1]).replace(/[`"'$()%{}[\]]/g, s => '`'+s)}.mp4"`
   ).join('\n'),
   'utf8'
 );
@@ -51,6 +51,7 @@ function makeFilenameFriendly(str) {
     .replace(/[/]/g, '-')
     .replace(/[<>:"/\\|?*]+/g, '')
     .replace(/[^ -~]+/g, '')
+    .substring(0, 115)
     .replace(/[\s.]+$/, '')
     .replace(/^\s+/, '')
   );

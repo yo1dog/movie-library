@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rename TV Show Thumbs</title>
+  <script src="assets/rename2.js"></script>
+  <script src="assets/lib/diffString.js"></script>
+  
+  <style>
+    body {
+      line-height: 150%;
+      font-family: Arial, Helvetica, sans-serif;
+      margin: 20px;
+    }
+    table {
+      border-collapse: collapse;
+      white-space: nowrap;
+    }
+    td, th {
+      padding: 0px 4px;
+      border: 1px solid black;
+    }
+    .diff {
+      /* white-space: pre; */
+    }
+    .diffAdd {
+      background-color: #E6FFE6;
+    }
+    .diffRemove {
+      background-color: #FFE6E6;
+    }
+    #skippedTable {
+      color: gray;
+    }
+    #separator {
+      height: 10pt;
+    }
+    #separator td {
+      border: none;
+    }
+    .odd {
+      background-color: #EEE;
+    }
+    .draggable {
+      cursor: grab;
+    }
+    table button {
+      width: 18pt;
+    }
+    .hidden > button {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  Select a directory containing your TV Show.<br />
+  <input id="videoInput" type="file" webkitdirectory /><br />
+  <br />
+  Select a directory containing your thumbnails.<br />
+  <input id="thumbInput" type="file" webkitdirectory /><br />
+  <br />
+  <button id="loadButton">Load</button><br />
+  <br />
+  <button id="removeSpecialsButton">Remove Specials</button><br />
+  
+  <br />
+  <table>
+    <thead>
+      <tr>
+        <th colspan="2">Video</th>
+        <th colspan="2">Thumb</th>
+        <th colspan="1">Output</th>
+      </tr>
+    </thead>
+    <tbody id="fileTable">
+    </tbody>
+    <tbody id="separator"><tr><td colspan="5"></td></tr></tbody>
+    <tbody id="skippedTable">
+    </tbody>
+  </table>
+  <br />
+  <br />
+  <textarea id="output" readonly></textarea><br />
+  <button id="copyOutputButton">Copy</button>
+</body>
+</html>

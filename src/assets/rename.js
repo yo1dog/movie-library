@@ -92,6 +92,7 @@ function makeFilenameFriendly(str) {
     .replace(/[/]/g, '-')
     .replace(/[<>:"/\\|?*]+/g, '')
     .replace(/[^ -~]+/g, '')
+    .substring(0, 115)
     .replace(/[\s.]+$/, '')
     .replace(/^\s+/, '')
   );

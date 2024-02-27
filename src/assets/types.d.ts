@@ -18,6 +18,7 @@ export interface Movie {
   thumbURL: string;
   logoURL: string;
   keyartURL: string;
+  clearartURL: string;
   videoFilepath: string;
 }
 
@@ -36,6 +37,7 @@ export interface TVShow {
   studioNames: string[];
   thumbURL: string;
   logoURL: string;
+  clearartURL: string;
   posterURL: string;
   seasons: Season[];
 }
@@ -80,4 +82,5 @@ export interface CustomWindow {
   movieLibraryConfig?: Config;
   movieLibraryFilter?: (movie: Movie) => boolean;
   movieLibrarySort?: (movieA: Movie, movieB: Movie) => number;
+  tvShowLibrarySort?: (tvShowA: TVShow, tvShowB: TVShow) => number;
 }

@@ -3,7 +3,7 @@ const path = require('path');
 // eslint-disable-next-line @typescript-eslint/naming-convention
 const {XMLParser} = require('fast-xml-parser');
 
-const enableGridNavWrap = false;
+const enableGridNavWrap = true;
 const enableMouseAtStart = false;
 
 /**
@@ -14,6 +14,7 @@ const xmlParser = new XMLParser({
   ignoreAttributes: false,
   allowBooleanAttributes: true,
   alwaysCreateTextNode: true,
+  parseTagValue: false,
   isArray: () => true,
   textNodeName: '_text',
   attributesGroupName: '_attr',
@@ -123,7 +124,8 @@ function loadMovie(nfoDirent, dir, dirents) {
     thumbURL: buildFileURL(dir, dirents.find(x => x.name === `${baseFilename}-landscape.jpg`)),
     logoURL: buildFileURL(dir, dirents.find(x => x.name === `${baseFilename}-clearlogo.png`)),
     keyartURL: buildFileURL(dir, dirents.find(x => x.name === `${baseFilename}-keyart.jpg`)),
-    videoFilepath: path.join(dir, videoFile.name),
+    clearartURL: buildFileURL(dir, dirents.find(x => x.name === `${baseFilename}-clearart.png`)),
+    videoFilepath: posixToWin(path.join(dir, videoFile.name)),
   };
   return movie;
 }
@@ -166,6 +168,7 @@ function loadTVShow(nfoDirent, dir, dirents) {
     studioNames: filterFalsey(node.studio?.map(x => x._text)).slice(0, 10) || [],
     thumbURL: buildFileURL(dir, dirents.find(x => x.name === `landscape.jpg`)),
     logoURL: buildFileURL(dir, dirents.find(x => x.name === `clearlogo.png`)),
+    clearartURL: buildFileURL(dir, dirents.find(x => x.name === `clearart.png`)),
     posterURL: buildFileURL(dir, dirents.find(x => x.name === `poster.jpg`)),
     seasons: [],
   };
@@ -222,7 +225,7 @@ function loadTVShow(nfoDirent, dir, dirents) {
     }
     
     const thumbURL = buildFileURL(dir, dirents.find(x => x.name === `${baseFilename}-thumb.jpg`));
-    const videoFilepath = path.join(dir, videoFile.name);
+    const videoFilepath = posixToWin(path.join(dir, videoFile.name));
     
     /** @type {Episode} */
     let episode;
@@ -290,7 +293,7 @@ function loadTVShow(nfoDirent, dir, dirents) {
     season.episodes.push(episode);
   }
   
-  tvShow.seasons.sort((a, b) => a.seasonNumber - b.seasonNumber);
+  tvShow.seasons.sort((a, b) => (a.seasonNumber || Infinity) - (b.seasonNumber || Infinity));
   for (const season of tvShow.seasons) {
     season.episodes.sort((a, b) => a.episodeOrd - b.episodeOrd);
   }
@@ -317,7 +320,7 @@ function genSortStr(title) {
  */
 function buildFileURL(dir, dirent) {
   if (!dirent) return '';
-  return 'file:///' + posixToWin(path.join(dir, dirent.name));
+  return 'file:///' + posixToWin(path.join(dir, encodeURIComponent(dirent.name)));
 }
 
 /**
