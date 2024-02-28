@@ -494,12 +494,22 @@ body {
   margin: 0;
   padding: 0;
 }
+.playerHeader {
+  position: absolute;
+  top: 0pt;
+  width: 100%;
+  height: 150pt;
+  padding-left: 2vw;
+  padding-right: 3vw;
+  padding-top: 2vw;
+  background-image: linear-gradient(to bottom, rgba(0,0,0,0.75), rgba(0,0,0,0.25) 75%, rgba(0,0,0,0));
+}
 .playerControls {
   position: absolute;
   bottom: 0pt;
   width: 100%;
   display: grid;
-  grid-template-columns: 50pt 1fr repeat(7, 35pt) 1fr 50pt;
+  grid-template-columns: 50pt 35pt 1fr repeat(7, 35pt) 1fr 35pt 50pt;
   grid-template-rows: auto 25pt;
   grid-column-gap: 0pt;
   grid-row-gap: 2pt;
@@ -508,13 +518,51 @@ body {
   padding-left: 5%;
   padding-right: 5%;
   padding-bottom: 7pt;
-  opacity: 1;
-  transition: opacity 200ms ease-out;
   background-image: linear-gradient(to top, rgba(0,0,0,0.75), rgba(0,0,0,0.25) 75%, rgba(0,0,0,0));
 }
+.playerHeader,
+.playerControls {
+  opacity: 1;
+  transition: opacity 200ms ease-out;
+}
+.hiddenControls .playerHeader,
 .hiddenControls .playerControls {
   opacity: 0;
 }
+.playerHeader > div {
+  display: inline-grid;
+  grid-template-columns: 25pt 1fr;
+  align-items: center;
+  justify-items: left;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 200ms ease-out;
+}
+.mouseNav .playerHeader > div:hover {
+  opacity: 1;
+}
+.playerHeader svg {
+  color: #fff;
+  width: 100%;
+  height: 100%;
+  grid-row: 1 / 3;
+}
+.playerTitle {
+  color: #fff;
+  font-size: 32px;
+  font-weight: 400;
+}
+.playerSubtitle {
+  color: #fff;
+  font-size: 15px;
+  font-weight: 300;
+  padding-top: 2px;
+}
+.playerTitle.hidden,
+.playerSubtitle.hidden {
+  display: none;
+}
+
 .playerButton {
   width: 100%;
   height: 100%;
@@ -558,7 +606,7 @@ body {
   border: 0;
   width: 100%;
   grid-column-start: 1;
-  grid-column-end: span 11;
+  grid-column-end: span 13;
   /* Padding affects the clickable area for the slider */
   padding: 8pt 0pt;
 }

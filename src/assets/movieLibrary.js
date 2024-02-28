@@ -718,7 +718,10 @@ class DetailScreen extends Screen {
       action: () => this.close()
     }, {
       elem: playButtonElem,
-      action: () => new PlayerScreen(movie.videoFilepath).show()
+      action: () => new PlayerScreen({
+        videoURL: movie.videoURL,
+        title: movie.title,
+      }).show()
     }]);
     navList.setActiveItem(1, false);
     
@@ -789,8 +792,8 @@ class TVShowScreen extends Screen {
     
     /** @type {{episode: Episode; gridItemElem: HTMLElement}[]} */
     const playlistEpisodes = [];
-    /** @type {string[]} */
-    const playlistVideoFilepaths = [];
+    /** @type {PlaylistItem[]} */
+    const playlistItems = [];
     
     detailBackgroundImgElem.src = tvShow.posterURL;
     detailLogoElem.alt = tvShow.title;
@@ -819,7 +822,7 @@ class TVShowScreen extends Screen {
     
     /** @param {number} [playlistIndex] */
     function startPlayer(playlistIndex) {
-      new PlayerScreen(playlistVideoFilepaths, {
+      new PlayerScreen(playlistItems, {
         playlistState,
         delayStateUpdate: true,
         initalPlaylistPosition: (
@@ -840,7 +843,7 @@ class TVShowScreen extends Screen {
       //   let label = 'RESUME';
       //   const episode = playlistEpisodes[playlistState.videoIndex]?.episode;
       //   if (episode) {
-      //     label += ` S${episode.seasonNumber}E${episode.episodeNumber}`;
+      //     label += ` S${episode.seasonNumber}:E${episode.episodeNumber}`;
       //   }
       //   playButtonLabelElem.innerText = label;
       // }
@@ -904,69 +907,27 @@ class TVShowScreen extends Screen {
           gridItemImgElem.remove();
         }
         
-        const isSpecial = !episode.seasonNumber;
-        if (isSpecial) {
-          gridItemEpisodeNumElem.classList.add('special');
+        let playerSubtitle;
+        if (episode.seasonNumber === 0) {
+          playerSubtitle = 'SPECIAL: ';
           gridItemEpisodeNumElem.innerText = 'SPECIAL: ';
+          gridItemEpisodeNumElem.classList.add('special');
         }
-        else if (episode.episodeNumber) {
-          if (episode.multiepisodeBases.length > 0) {
-            let episodeNumStr = episode.multiepisodeBases[0].episodeNumber.toString();
-            let didSkip = false;
-            for (let i = 1; i < episode.multiepisodeBases.length; ++i) {
-              const cur = episode.multiepisodeBases[i];
-              const prv = episode.multiepisodeBases[i - 1];
-              
-              if (cur.seasonNumber === episode.seasonNumber && cur.episodeNumber === prv.episodeNumber + 1) {
-                didSkip = true;
-                continue;
-              }
-              
-              if (didSkip) {
-                episodeNumStr += '-' + prv.episodeNumber;
-              }
-              didSkip = false;
-              
-              episodeNumStr += ', ';
-              
-              if (cur.seasonNumber !== episode.seasonNumber) {
-                episodeNumStr += `S${cur.seasonNumber}E`;
-              }
-              episodeNumStr += cur.episodeNumber;
-            }
-            if (didSkip) {
-              episodeNumStr += '-' + episode.multiepisodeBases[episode.multiepisodeBases.length - 1].episodeNumber;
-            }
-            
+        else {
+          const episodeNumStr = formatEpisodeNum(episode);
+          if (episodeNumStr) {
+            playerSubtitle = `S${episode.seasonNumber}:E${episodeNumStr} `;
             gridItemEpisodeNumElem.innerText = `${episodeNumStr}. `;
           }
           else {
-            gridItemEpisodeNumElem.innerText = `${episode.episodeNumber}. `;
+            playerSubtitle = '';
+            gridItemEpisodeNumElem.remove();
           }
-        }
-        else {
-          gridItemEpisodeNumElem.remove();
         }
         
-        if (episode.multiepisodeBases.length > 0) {
-          const normalizedTitles = episode.multiepisodeBases.map(x => x.title.replace(/\s*\(?(p|part)?\s*\d+\)?$/, ''));
-          let allSameTitle = true;
-          for (let i = 1; i < normalizedTitles.length; ++i) {
-            if (normalizedTitles[i] !== normalizedTitles[0]) {
-              allSameTitle = false;
-              break;
-            }
-          }
-          if (allSameTitle) {
-            gridItemTitleElem.innerText = normalizedTitles[0];
-          }
-          else {
-            gridItemTitleElem.innerText = episode.multiepisodeBases.map(x => x.title).join(' / ');
-          }
-        }
-        else {
-          gridItemTitleElem.innerText = episode.title;
-        }
+        const episodeTitleStr = formatEpisodeTitle(episode);
+        playerSubtitle += episodeTitleStr;
+        gridItemTitleElem.innerText = episodeTitleStr;
         
         if (episode.runtimeMinutes) {
           gridItemRuntimeElem.innerHTML = `&nbsp;`;
@@ -984,8 +945,16 @@ class TVShowScreen extends Screen {
         // }
         
         const playlistIndex = playlistEpisodes.length;
-        playlistEpisodes.push({episode, gridItemElem});
-        playlistVideoFilepaths.push(episode.videoFilepath);
+        playlistEpisodes.push({
+          episode,
+          gridItemElem
+        });
+        
+        playlistItems.push({
+          videoURL: episode.videoURL,
+          title: tvShow.title,
+          subtitle: playerSubtitle,
+        });
         
         gridElem.appendChild(gridItemElem);
         navItems.push({
@@ -1246,15 +1215,22 @@ class PinScreen extends Screen {
   }
 }
 
+/**
+ * @typedef PlaylistItem
+ * @property {string} videoURL
+ * @property {string} [title]
+ * @property {string} [subtitle]
+ */
+
 class PlayerScreen extends Screen {
   /**
-   * @param {string | string[]} videoFilepaths 
+   * @param {PlaylistItem | PlaylistItem[]} _playlistItems 
    * @param {object} [options] 
    * @param {PlaylistState} [options.playlistState] 
    * @param {boolean} [options.delayStateUpdate] 
    * @param {{index: number; startSec?: number}} [options.initalPlaylistPosition] 
    */
-  constructor(videoFilepaths, options = {}) {
+  constructor(_playlistItems, options = {}) {
     const {playlistState} = options;
     const stateUpdateReqContinuousPlayDurSec = options.delayStateUpdate? MEANINGFUL_CONTINUOUS_PLAY_DURATION_S : 0;
     const initalPlaylistPosition = options.initalPlaylistPosition || (
@@ -1266,11 +1242,10 @@ class PlayerScreen extends Screen {
       }
     );
     
-    if (!Array.isArray(videoFilepaths)) {
-      videoFilepaths = [videoFilepaths];
-    }
+    const playlistItems = Array.isArray(_playlistItems)? _playlistItems : [_playlistItems];
+    
     /** @type {number} */
-    let curVideoIndex;
+    let curPlaylistIndex;
     /** @type {boolean} */
     let isWaiting; // TODO: Should track this with video elem prop instead?
     
@@ -1282,6 +1257,9 @@ class PlayerScreen extends Screen {
     const screenElem = requireElem('main', frag);
     const videoElem = /** @type {HTMLVideoElement} */(requireElem('video', screenElem));
     const playerElem = requireElem('.player', screenElem);
+    const headerBackElem = requireElem('.playerHeader > div', screenElem);
+    const titleElem = requireElem('.playerTitle', screenElem);
+    const subtitleElem = requireElem('.playerSubtitle', screenElem);
     const controlsElem = /** @type {HTMLInputElement} */(requireElem('.playerControls', screenElem));
     const scrubberElem = /** @type {HTMLInputElement} */(requireElem('.playerScrubber', screenElem));
     const timeElem = requireElem('.playerTime', screenElem);
@@ -1295,6 +1273,7 @@ class PlayerScreen extends Screen {
     const loadingSVG = requireElem('.loadingSVG', playPauseButtonElem);
     const fastForwardButtonElem = /** @type {HTMLButtonElement} */(requireElem('.playerFastForwardButton', screenElem));
     const nextButtonElem = /** @type {HTMLButtonElement} */(requireElem('.playerNextButton', screenElem));
+    const fullscreenButtonElem = /** @type {HTMLButtonElement} */(requireElem('.playerFullscreenButton', screenElem));
     
     /** @param {KeyboardEvent | MouseEvent} [event] */
     function calcPlayerSkipDurS(event) {
@@ -1316,7 +1295,7 @@ class PlayerScreen extends Screen {
         this.close()
       },
       {elem: previousButtonElem, action: () => {
-        setVideoIndex(curVideoIndex - 1);
+        setPlaylistIndex(curPlaylistIndex - 1);
       }},
       {elem: rewindButtonElem, action: event => {
         setVideoTime(videoElem.currentTime - calcPlayerSkipDurS(event));
@@ -1328,11 +1307,20 @@ class PlayerScreen extends Screen {
         setVideoTime(videoElem.currentTime + calcPlayerSkipDurS(event));
       }},
       {elem: nextButtonElem, action: () => {
-        setVideoIndex(curVideoIndex + 1);
+        setPlaylistIndex(curPlaylistIndex + 1);
+      }},
+      {elem: fullscreenButtonElem, action: () => {
+        if (document.fullscreenElement) {
+          void document.exitFullscreen();
+        }
+        else {
+          void document.body.requestFullscreen({navigationUI: 'hide'});
+        }
       }},
     ];
+    headerBackElem.addEventListener('click', () => this.close());
     
-    if (videoFilepaths.length === 1) {
+    if (playlistItems.length === 1) {
       navListItems.splice(navListItems.findIndex(x => x.elem === previousButtonElem), 1);
       navListItems.splice(navListItems.findIndex(x => x.elem === nextButtonElem), 1);
       previousButtonElem.remove();
@@ -1453,7 +1441,7 @@ class PlayerScreen extends Screen {
     
     const updatePlaylistState = playlistState? debounce(1000, () => {
       if (canUpdateState) {
-        playlistState.videoIndex = curVideoIndex;
+        playlistState.videoIndex = curPlaylistIndex;
         playlistState.videoElapsedSec = videoElem.currentTime || 0;
         playlistState.videoElapsedPct = (videoElem.currentTime / videoElem.duration) * 100;
         savePlaylistState(playlistState);
@@ -1506,7 +1494,7 @@ class PlayerScreen extends Screen {
     });
     videoElem.addEventListener('ended', () => {
       updatePlayPauseUI();
-      setVideoIndex(curVideoIndex + 1);
+      setPlaylistIndex(curPlaylistIndex + 1);
     });
     
     videoElem.addEventListener('click', () => togglePlayPause());
@@ -1534,31 +1522,36 @@ class PlayerScreen extends Screen {
     //   debug: true
     // });
     
-    /** @param {number} targetIndex */
-    function setVideoIndex(targetIndex) {
-      targetIndex = Math.max(Math.min(targetIndex, videoFilepaths.length - 1), 0);
-      if (curVideoIndex === targetIndex) return;
+    /** @param {number} playlistIndex */
+    function setPlaylistIndex(playlistIndex) {
+      playlistIndex = Math.max(Math.min(playlistIndex, playlistItems.length - 1), 0);
+      if (curPlaylistIndex === playlistIndex) return;
       
-      curVideoIndex = targetIndex;
-      const videoFilepath = videoFilepaths[curVideoIndex];
+      curPlaylistIndex = playlistIndex;
+      const playlistItem = playlistItems[curPlaylistIndex];
       
       if (prevNavListItemIndex !== -1) {
-        navList.setItemIsDisabled(prevNavListItemIndex, curVideoIndex <= 0);
+        navList.setItemIsDisabled(prevNavListItemIndex, curPlaylistIndex <= 0);
       }
       if (nextNavListItemIndex !== -1) {
-        navList.setItemIsDisabled(nextNavListItemIndex, curVideoIndex >= videoFilepaths.length - 1);
+        navList.setItemIsDisabled(nextNavListItemIndex, curPlaylistIndex >= playlistItems.length - 1);
       }
+      
+      titleElem.innerText = playlistItem.title || '';
+      subtitleElem.innerText = playlistItem.subtitle || '';
+      titleElem.classList.toggle('hidden', !playlistItem.title);
+      subtitleElem.classList.toggle('hidden', !playlistItem.title || !playlistItem.subtitle);
       
       updateVideoTimeUI(0);
       updateVideoDurationUI(0);
       isWaiting = true;
-      videoElem.src = /^(\.|http)/.test(videoFilepath)? videoFilepath : 'file://' + videoFilepath;
+      videoElem.src = playlistItem.videoURL;
       videoElem.load();
       //void videoElem.play();
       updatePlayPauseUI();
     }
     
-    setVideoIndex(initalPlaylistPosition.index);
+    setPlaylistIndex(initalPlaylistPosition.index);
     if (initalPlaylistPosition.startSec) {
       videoElem.currentTime = initalPlaylistPosition.startSec;
     }
@@ -1701,11 +1694,11 @@ function init() {
       studioNames: x.studioNames || [],
       hasSubtitles: x.hasSubtitles || false,
       runtimeMinutes: x.runtimeMinutes || 0,
-      thumbURL: x.thumbURL || (x.videoFilepath || '').replace(/^\/mnt\/m\//, 'file:///M:\\').replaceAll('/', '\\').replace(/\.(mp4|mkv|avi)$/, '-landscape.jpg'),
+      thumbURL: x.thumbURL || '',
       logoURL: x.logoURL || '',
       keyartURL: x.keyartURL || '',
       clearartURL: x.clearartURL || '',
-      videoFilepath: x.videoFilepath || '',
+      videoURL: x.videoURL || '',
     };
     return movie;
   });
@@ -1782,7 +1775,7 @@ function init() {
               ...mapEpisodeBase(x),
               episodeOrd: x.episodeOrd || 0,
               thumbURL: x.thumbURL || '',
-              videoFilepath: x.videoFilepath || '',
+              videoURL: x.videoURL || '',
               multiepisodeBases: (x.multiepisodeBases || []).map(mapEpisodeBase),
             };
             return episode;
@@ -1810,7 +1803,7 @@ function init() {
   
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const testPaths = Array(10).fill(0).map((_,i) => `C:\\Users\\Mike\\Downloads\\thing${i+1}.mp4`);
-  const tvPaths = String.raw`
+  const tvPlaylistItems = String.raw`
 M:\Bumpers\bumpworthy\7177 - Toonami 2.0 Akira To Ads 1.mp4
 M:\Bumpers\bumpworthy\3546 - Eagleheart Stats 2.mp4
 M:\Bumpers\bumpworthy\2367 - Television Closed.mp4
@@ -2009,7 +2002,7 @@ M:\TV\The Boondocks\Season 03\03.07 - Pause.mp4
 M:\Bumpers\bumpworthy\227 - Mermaid Murder.mp4
 M:\Bumpers\Ambient Swim Bumpers\bump1434.mp4
 M:\TV\Death Note\Season 01\01.37 - New World.mp4
-  `.split('\n').map(x => x.trim()).filter(x => x);
+  `.split('\n').map(x => x.trim()).filter(x => x).map(x => ({videoURL: 'file:///' + x.replace(/^\/mnt\/(.)\//, (_,x) => x.toUpperCase() + ':\\').replaceAll('/', '\\')}));
   // for (let i = 0; i < tvPaths.length - 1; ++i) {
   //   const count = 1 + Math.floor(Math.random() * 3);
   //   const stop = i + count;
@@ -2064,7 +2057,7 @@ M:\TV\Death Note\Season 01\01.37 - New World.mp4
         })), movieLibraryConfig?.enableGridNavWrap).show()
       }, {
         title: 'TV',
-        action: () => new PlayerScreen(tvPaths, {
+        action: () => new PlayerScreen(tvPlaylistItems, {
           playlistState: getPlaylistState('tv-adult')
         }).show()
       }], true).show()
@@ -2214,6 +2207,69 @@ function formatDuration(durationS) {
   if (secs < 10) str += '0';
   str += secs;
   return str;
+}
+
+/**
+ * @param {Episode} episode 
+ */
+function formatEpisodeNum(episode) {
+  if (episode.multiepisodeBases.length === 0) {
+    if (!episode.episodeNumber) return;
+    return episode.episodeNumber.toString();
+  }
+  
+  let episodeNumStr = episode.multiepisodeBases[0].episodeNumber.toString();
+  let didSkip = false;
+  for (let i = 1; i < episode.multiepisodeBases.length; ++i) {
+    const cur = episode.multiepisodeBases[i];
+    const prv = episode.multiepisodeBases[i - 1];
+    
+    if (cur.seasonNumber === prv.seasonNumber && cur.episodeNumber === prv.episodeNumber + 1) {
+      didSkip = true;
+      continue;
+    }
+    
+    if (didSkip) {
+      episodeNumStr += '-' + prv.episodeNumber;
+    }
+    didSkip = false;
+    
+    episodeNumStr += ', ';
+    
+    if (cur.seasonNumber !== prv.seasonNumber) {
+      episodeNumStr += `S${cur.seasonNumber}:E`;
+    }
+    episodeNumStr += cur.episodeNumber;
+  }
+  if (didSkip) {
+    episodeNumStr += '-' + episode.multiepisodeBases[episode.multiepisodeBases.length - 1].episodeNumber;
+  }
+  
+  return episodeNumStr;
+}
+
+/**
+ * @param {Episode} episode 
+ */
+function formatEpisodeTitle(episode) {
+  if (episode.multiepisodeBases.length === 0) {
+    return episode.title;
+  }
+  
+  const normalizedTitles = episode.multiepisodeBases.map(x => x.title.replace(/\s*\(?(p|part)?\s*\d+\)?$/, ''));
+  let allSameTitle = true;
+  for (let i = 1; i < normalizedTitles.length; ++i) {
+    if (normalizedTitles[i] !== normalizedTitles[0]) {
+      allSameTitle = false;
+      break;
+    }
+  }
+  
+  if (allSameTitle) {
+    return normalizedTitles[0];
+  }
+  
+  return episode.multiepisodeBases.map(x => x.title).join(' / ');
 }
 
 init();

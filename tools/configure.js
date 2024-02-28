@@ -225,7 +225,7 @@ function loadTVShow(nfoDirent, dir, dirents) {
     }
     
     const thumbURL = buildFileURL(dir, dirents.find(x => x.name === `${baseFilename}-thumb.jpg`));
-    const videoFilepath = posixToWin(path.join(dir, videoFile.name));
+    const videoURL = buildFileURL(dir, videoFile);
     
     /** @type {Episode} */
     let episode;
@@ -234,7 +234,7 @@ function loadTVShow(nfoDirent, dir, dirents) {
         ...episodeBases[0],
         episodeOrd: 0,
         thumbURL,
-        videoFilepath,
+        videoURL,
         multiepisodeBases: [],
       };
     }
@@ -256,7 +256,7 @@ function loadTVShow(nfoDirent, dir, dirents) {
         directorNames: episodeBases.map(x => x.directorNames).reduce((arr, x) => arr.concat(x)).filter((x, i, a) => a.indexOf(x) === i),
         actorNames: episodeBases.map(x => x.actorNames).reduce((arr, x) => arr.concat(x)).filter((x, i, a) => a.indexOf(x) === i),
         thumbURL,
-        videoFilepath,
+        videoURL,
         multiepisodeBases: episodeBases,
       };
     }

@@ -19,7 +19,7 @@ export interface Movie {
   logoURL: string;
   keyartURL: string;
   clearartURL: string;
-  videoFilepath: string;
+  videoURL: string;
 }
 
 export interface TVShow {
@@ -66,7 +66,7 @@ export interface EpisodeBase {
 export interface Episode extends EpisodeBase {
   episodeOrd: number;
   thumbURL: string;
-  videoFilepath: string;
+  videoURL: string;
   multiepisodeBases: EpisodeBase[];
 }
 
