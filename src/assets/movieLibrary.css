@@ -183,6 +183,12 @@ body {
   line-height: 1.6;
   padding-top: 10px;
   margin: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+  word-break: break-word; /* does nothing so long as line-clamp works */
   /* text-shadow: 1pt 1pt 3pt #000; */
 }
 .gridItemTitleContainer .episodeNum {

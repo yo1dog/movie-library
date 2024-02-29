@@ -553,7 +553,7 @@ class GridScreen extends Screen {
     const gridElem = requireElem('.grid', screenElem);
     const gridItemTemplate = /** @type {HTMLTemplateElement} */(gridElem.getElementsByTagName('TEMPLATE')[0]);
     
-    gridElem.style.gridTemplateColumns = `repeat(${GRID_NUM_COLUMNS}, 1fr)`;
+    gridElem.style.gridTemplateColumns = `repeat(${GRID_NUM_COLUMNS}, minmax(0, 1fr))`;
     
     /** @type {NavListItemDef[]} */
     const navItems = [];
@@ -883,7 +883,7 @@ class TVShowScreen extends Screen {
       const gridElem = requireElem('.grid', seasonElem);
       const gridItemTemplate = /** @type {HTMLTemplateElement} */(gridElem.getElementsByTagName('TEMPLATE')[0]);
       
-      gridElem.style.gridTemplateColumns = `repeat(${GRID_NUM_COLUMNS}, 1fr)`;
+      gridElem.style.gridTemplateColumns = `repeat(${GRID_NUM_COLUMNS}, minmax(0, 1fr))`;
       
       const detailNavItemElem = requireElem('.detailNavItem', seasonFrag);
       detailNavItemElem.innerText = season.seasonNumber === 0? 'Specials' : `Season ${season.seasonNumber}`;
@@ -930,8 +930,7 @@ class TVShowScreen extends Screen {
         gridItemTitleElem.innerText = episodeTitleStr;
         
         if (episode.runtimeMinutes) {
-          gridItemRuntimeElem.innerHTML = `&nbsp;`;
-          gridItemRuntimeElem.innerText += `(${episode.runtimeMinutes}m)`;
+          gridItemRuntimeElem.innerText += ` (${episode.runtimeMinutes}m)`;
         }
         else {
           gridItemRuntimeElem.remove();
