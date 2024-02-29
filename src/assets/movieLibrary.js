@@ -100,7 +100,18 @@ const navController = (() => {
       isKeyboardNavActive = true;
     }
   }
+  /** @param {boolean} [withKeyboardNav] */
+  function init(withKeyboardNav) {
+    if (withKeyboardNav) {
+      useKeyboardNav();
+    }
+    else {
+      isKeyboardNavActive = true;
+      useMouseNav();
+    }
+  }
   return {
+    init,
     getIsKeyboardNavActive: () => isKeyboardNavActive,
     useMouseNav,
     useKeyboardNav,
@@ -1801,9 +1812,7 @@ function init() {
     tvShows.sort(cWindow.tvShowLibrarySort);
   }
   
-  if (!movieLibraryConfig.enableMouseAtStart) {
-    navController.useKeyboardNav();
-  }
+  navController.init(!movieLibraryConfig.enableMouseAtStart);
   
   deeplinkSlugs = (
     window.location.hash.substring(1)
