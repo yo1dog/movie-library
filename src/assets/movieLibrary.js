@@ -76,6 +76,7 @@ for (let i = 0; i <=9; ++i) {
  * @property {HTMLElement} [interactiveElem]
  * @property {(event: KeyboardEvent | MouseEvent | undefined, navItem: NavListItem) => void} [action]
  * @property {boolean} [isDisabled]
+ * @property {DisabledAction} [disabledAction]
  */
 /**
  * @typedef NavListItem
@@ -87,7 +88,23 @@ for (let i = 0; i <=9; ++i) {
  * @property {number} x
  * @property {number} y
  * @property {boolean} isDisabled
+ * @property {DisabledAction} disabledAction
  */
+
+const DIRECTION = /** @type {const} */({
+  LEFT: 1,
+  RIGHT: 2,
+  UP: 3,
+  DOWN: 4,
+});
+/** @typedef {DIRECTION[keyof typeof DIRECTION]} Direction */
+const DISABLED_ACTION = /** @type {const} */({
+  STOP: 0,
+  ...DIRECTION,
+  SKIP: 5,
+  WRAP: 6,
+});
+/** @typedef {DISABLED_ACTION[keyof typeof DISABLED_ACTION]} DisabledAction */
 
 const navController = (() => {
   let isKeyboardNavActive = false;
@@ -155,6 +172,7 @@ class NavigatableList {
         x: i % this.numColumns,
         y: Math.floor(i / this.numColumns),
         isDisabled: false,
+        disabledAction: itemDefs[i].disabledAction || DISABLED_ACTION.STOP,
       };
       if (itemDefs[i].isDisabled) {
         NavigatableList.#setItemIsDisabled(item, true);
@@ -179,10 +197,9 @@ class NavigatableList {
   
   /**
    * Changes the active item relative to the current active item while constrained to the grid.
-   * @param {number} dx
-   * @param {number} dy
+   * @param {Direction} direction
    */
-  move(dx, dy) {
+  move(direction) {
     if (!this.activeItem) {
       this.setActiveItem(0);
       return;
@@ -191,35 +208,86 @@ class NavigatableList {
     let index = this.activeItem.index;
     let x = this.activeItem.x;
     let y = this.activeItem.y;
-    do {
-      if (this.enableWrap) {
-        index += dx + (dy * this.numColumns);
-        if (index < 0) {
-          index = 0;
-          break;
-        }
-        if (index > this.items.length - 1) {
-          index = this.items.length - 1;
-          break;
-        }
-      }
-      else {
-        const lastIndex = index;
-        x += dx;
-        y += dy;
-        if (x < 0) x = 0;
-        if (y < 0) y = 0;
-        if (x > this.numColumns - 1) x = this.numColumns - 1;
-        if (y > this.numRows    - 1) y = this.numRows    - 1;
-        index = (y * this.numColumns) + x;
-        if (index > this.items.length - 1) index = this.items.length - 1;
-        if (index === lastIndex) break;
-      }
-    }
-    while (this.items[index].isDisabled);
+    const visitedIndexes = [index];
+    const yOverflowMaxIndex = this.items.length - 1 - this.numColumns;
     
-    if (this.items[index].isDisabled) {
-      return;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      switch (direction) {
+        case DIRECTION.LEFT:
+          if (x === 0) {
+            if (!this.enableWrap || y === 0) {
+              return;
+            }
+            x = this.items.length - 1;
+            --y;
+          }
+          else {
+            --x;
+          }
+          --index;
+          break;
+        case DIRECTION.RIGHT:
+          if (index === this.items.length - 1) {
+            return;
+          }
+          if (x === this.numColumns - 1) {
+            if (!this.enableWrap || y === this.numRows - 1) {
+              return;
+            }
+            x = 0;
+            ++y;
+          }
+          else {
+            ++x;
+          }
+          ++index;
+          break;
+        case DIRECTION.UP:
+          if (y === 0) {
+            return;
+          }
+          --y;
+          index -= this.numColumns;
+          break;
+        case DIRECTION.DOWN:
+          if (y === this.numRows - 1) {
+            return;
+          }
+          ++y;
+          if (index > yOverflowMaxIndex) {
+            x -= index - yOverflowMaxIndex;
+            index = this.items.length - 1;
+          }
+          else {
+            index += this.numColumns;
+          }
+        break;
+      }
+      
+      if (visitedIndexes.includes(index)) {
+        return;
+      }
+      
+      const item = this.items[index];
+      if (!item.isDisabled) {
+        break;
+      }
+      
+      if (item.disabledAction === DISABLED_ACTION.STOP) {
+        return;
+      }
+      else if (item.disabledAction === DISABLED_ACTION.WRAP) {
+        // if (!this.enableWrap) {
+        //   return;
+        // }
+        if (direction !== DIRECTION.RIGHT) {
+          direction = DIRECTION.LEFT;
+        }
+      }
+      else if (item.disabledAction !== DISABLED_ACTION.SKIP) {
+        direction = item.disabledAction;
+      }
     }
     
     this.setActiveItem(index);
@@ -547,10 +615,10 @@ class MenuScreen extends Screen {
         this.navList.performActiveAction(event);
         return 1;
       case 'LEFT':
-        this.navList.move(-1, 0);
+        this.navList.move(DIRECTION.LEFT);
         return 1;
       case 'RIGHT':
-        this.navList.move(1, 0);
+        this.navList.move(DIRECTION.RIGHT);
         return 1;
     }
     return super.handleKey(event, keyAction);
@@ -646,16 +714,16 @@ class GridScreen extends Screen {
         this.navList.performActiveAction(event);
         return 1;
       case 'LEFT':
-        this.navList.move(-1, 0);
+        this.navList.move(DIRECTION.LEFT);
         return 1;
       case 'RIGHT':
-        this.navList.move(1, 0);
+        this.navList.move(DIRECTION.RIGHT);
         return 1;
       case 'UP':
-        this.navList.move(0, -1);
+        this.navList.move(DIRECTION.UP);
         return 1;
       case 'DOWN':
-        this.navList.move(0, 1);
+        this.navList.move(DIRECTION.DOWN);
         return 1;
     }
     return super.handleKey(event, keyAction);
@@ -764,10 +832,10 @@ class DetailScreen extends Screen {
         this.navList.performActiveAction(event);
         return 1;
       case 'LEFT':
-        this.navList.move(-1, 0);
+        this.navList.move(DIRECTION.LEFT);
         return 1;
       case 'RIGHT':
-        this.navList.move(1, 0);
+        this.navList.move(DIRECTION.RIGHT);
         return 1;
       case 'UP':
         if (event.repeat) return 2;
@@ -791,8 +859,9 @@ class DetailScreen extends Screen {
 class TVShowScreen extends Screen {
   /**
    * @param {TVShow} tvShow 
+   * @param {boolean} [enableWrap]
    */
-  constructor(tvShow) {
+  constructor(tvShow, enableWrap) {
     const frag = /** @type {DocumentFragment} */(tvShowScreenTemplate.content.cloneNode(true));
     const screenElem = requireElem('main', frag);
     
@@ -890,12 +959,18 @@ class TVShowScreen extends Screen {
       action: () => startPlayer()
     }];
     while (navItems.length % GRID_NUM_COLUMNS > 0) {
-      navItems.push({isDisabled: true});
+      navItems.push({
+        isDisabled: true,
+        disabledAction: DISABLED_ACTION.WRAP,
+      });
     }
     
     for (const season of tvShow.seasons) {
       while (navItems.length % GRID_NUM_COLUMNS > 0) {
-        navItems.push({isDisabled: true});
+        navItems.push({
+          isDisabled: true,
+          disabledAction: DISABLED_ACTION.WRAP
+        });
       }
       
       const seasonFrag = /** @type {DocumentFragment} */(seasonTemplate.content.cloneNode(true));
@@ -989,7 +1064,7 @@ class TVShowScreen extends Screen {
     
     episodeCountElem.innerText = `${playlistEpisodes.length} episode${playlistEpisodes.length !== 1? 's' : ''}`;
     
-    const navList = new NavigatableList(navItems, GRID_NUM_COLUMNS, true);
+    const navList = new NavigatableList(navItems, GRID_NUM_COLUMNS, enableWrap);
     navList.setActiveItem(1, false);
     
     super(screenElem);
@@ -1011,10 +1086,10 @@ class TVShowScreen extends Screen {
         this.navList.performActiveAction(event);
         return 1;
       case 'LEFT':
-        this.navList.move(-1, 0);
+        this.navList.move(DIRECTION.LEFT);
         return 1;
       case 'RIGHT':
-        this.navList.move(1, 0);
+        this.navList.move(DIRECTION.RIGHT);
         return 1;
       case 'UP':
         if (this.navList.activeItem?.y === 0) {
@@ -1024,10 +1099,22 @@ class TVShowScreen extends Screen {
           });
           return 1;
         }
-        this.navList.move(0, -1);
+        else if (this.navList.activeItem?.y === 1) {
+          // when moving from the episode grid to the button controls, always select back button
+          this.navList.setActiveItem(0);
+        }
+        else {
+          this.navList.move(DIRECTION.UP);
+        }
         return 1;
       case 'DOWN':
-        this.navList.move(0, 1);
+        if (this.navList.activeItem?.y === 0) {
+          // when moving from the button controls to the episode grid, always select the first episode
+          this.navList.setActiveItem(this.navList.numColumns);
+        }
+        else {
+          this.navList.move(DIRECTION.DOWN);
+        }
         return 1;
     }
     return super.handleKey(event, keyAction);
@@ -1205,19 +1292,19 @@ class PinScreen extends Screen {
         return 1;
       case 'LEFT':
         this.focusNumpad();
-        this.numpadNavList.move(-1, 0);
+        this.numpadNavList.move(DIRECTION.LEFT);
         return 1;
       case 'RIGHT':
         this.focusNumpad();
-        this.numpadNavList.move(1, 0);
+        this.numpadNavList.move(DIRECTION.RIGHT);
         return 1;
       case 'UP':
         this.focusNumpad();
-        this.numpadNavList.move(0, -1);
+        this.numpadNavList.move(DIRECTION.UP);
         return 1;
       case 'DOWN':
         this.focusNumpad();
-        this.numpadNavList.move(0, 1);
+        this.numpadNavList.move(DIRECTION.DOWN);
         return 1;
       case 'DIGIT':
         this.focusPin();
@@ -1314,7 +1401,7 @@ class PlayerScreen extends Screen {
       {elem: stopButtonElem, action: () =>
         this.close()
       },
-      {elem: previousButtonElem, action: () => {
+      {elem: previousButtonElem, disabledAction: DISABLED_ACTION.SKIP, action: () => {
         setPlaylistIndex(curPlaylistIndex - 1);
       }},
       {elem: rewindButtonElem, action: event => {
@@ -1326,7 +1413,7 @@ class PlayerScreen extends Screen {
       {elem: fastForwardButtonElem, action: event => {
         setVideoTime(videoElem.currentTime + calcPlayerSkipDurS(event));
       }},
-      {elem: nextButtonElem, action: () => {
+      {elem: nextButtonElem, disabledAction: DISABLED_ACTION.SKIP, action: () => {
         setPlaylistIndex(curPlaylistIndex + 1);
       }}
     ];
@@ -1685,7 +1772,7 @@ class PlayerScreen extends Screen {
           this.navList.setActiveItem(this.playPauseNavListIndex);
         }
         this.activateControls();
-        this.navList.move(-1, 0);
+        this.navList.move(DIRECTION.LEFT);
         return 1;
       case 'RIGHT':
         if (this.getIsScrubberActive()) {
@@ -1698,7 +1785,7 @@ class PlayerScreen extends Screen {
           this.navList.setActiveItem(this.playPauseNavListIndex);
         }
         this.activateControls();
-        this.navList.move(1, 0);
+        this.navList.move(DIRECTION.RIGHT);
         return 1;
     }
     return super.handleKey(event, keyAction);
@@ -2094,7 +2181,7 @@ M:\TV\Death Note\Season 01\01.37 - New World.mp4
         action: () => new GridScreen(tvShows.map(tvShow => ({
           title: tvShow.title,
           imageURL: tvShow.thumbURL,
-          action: () => new TVShowScreen(tvShow).show()
+          action: () => new TVShowScreen(tvShow, movieLibraryConfig.enableGridNavWrap).show()
         })), movieLibraryConfig.enableGridNavWrap).show()
       }, {
         title: 'TV',
