@@ -16,6 +16,7 @@ const MEANINGFUL_CONTINUOUS_PLAY_DURATION_S = 60;
 const movieLibraryConfig = {
   enableGridNavWrap: true,
   enableMouseAtStart: true,
+  enableFullscreenToggle: true,
   movies: [],
   tvShows: [],
 };
@@ -1327,11 +1328,20 @@ class PlayerScreen extends Screen {
       }},
       {elem: nextButtonElem, action: () => {
         setPlaylistIndex(curPlaylistIndex + 1);
-      }},
-      {elem: fullscreenButtonElem, action: () => {
-        toggleFullscreen();
-      }},
+      }}
     ];
+    
+    if (movieLibraryConfig.enableFullscreenToggle) {
+      navListItems.push(
+        {elem: fullscreenButtonElem, action: () => {
+          toggleFullscreen();
+        }},
+      );
+    }
+    else {
+      fullscreenButtonElem.style.display = 'none';
+    }
+    
     headerBackElem.addEventListener('click', event => {
       this.close();
       event.stopPropagation(); // Prevent toggling play/pause.
@@ -1451,6 +1461,7 @@ class PlayerScreen extends Screen {
       }
     }
     function toggleFullscreen() {
+      if (!movieLibraryConfig.enableFullscreenToggle) return;
       if (document.fullscreenElement) {
         void document.exitFullscreen();
       }

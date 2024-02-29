@@ -5,6 +5,7 @@ const {XMLParser} = require('fast-xml-parser');
 
 const enableGridNavWrap = true;
 const enableMouseAtStart = false;
+const enableFullscreenToggle = false;
 
 /**
  * @typedef {{_text?: string; _attr?: Record<string, string>;} & {[key: string]: XMLNode[] | undefined}} XMLNode
@@ -63,6 +64,7 @@ function createConfig() {
   const config = {
     enableGridNavWrap,
     enableMouseAtStart,
+    enableFullscreenToggle,
     movies,
     tvShows,
   };

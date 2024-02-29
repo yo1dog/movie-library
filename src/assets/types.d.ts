@@ -74,6 +74,7 @@ type PartialDeep<T> = T extends any[]? PartialDeep<T[number]>[] : T extends obje
 export interface Config {
  enableGridNavWrap: boolean;
  enableMouseAtStart: boolean;
+ enableFullscreenToggle: boolean;
  movies: PartialDeep<Movie>[];
  tvShows: PartialDeep<TVShow>[];
 }

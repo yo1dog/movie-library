@@ -1,6 +1,7 @@
 window.movieLibraryConfig = {
   enableGridNavWrap: true,
   enableMouseAtStart: false,
+  enableFullscreenToggle: true,
   movies: [
     {
       title: 'Aladdin',
