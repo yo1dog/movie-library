@@ -12,6 +12,13 @@ const PLAYER_SKIP_SMALL_DURATION_S = 10;
 const PLAYER_SKIP_MEDIUM_DURATION_S = 30;
 const PLAYER_SKIP_LARGE_DURATION_S = 5*60;
 const MEANINGFUL_CONTINUOUS_PLAY_DURATION_S = 60;
+/** @type {Config} */
+const movieLibraryConfig = {
+  enableGridNavWrap: true,
+  enableMouseAtStart: true,
+  movies: [],
+  tvShows: [],
+};
 // ------------------------
 
 /** @type {Record<string, string>} */
@@ -59,6 +66,7 @@ for (let i = 0; i <=9; ++i) {
 /** @typedef {import('./types').Season} Season */
 /** @typedef {import('./types').Episode} Episode */
 /** @typedef {import('./types').CustomWindow} CustomWindow */
+/** @typedef {import('./types').Config} Config */
 
 /**
  * @typedef NavListItemDef
@@ -1690,13 +1698,16 @@ function init() {
   const errorAlertElem = requireElem('#errorAlert');
   
   const cWindow = /** @type {CustomWindow} */(window);
-  const {movieLibraryConfig} = cWindow;
-  if (!movieLibraryConfig) {
+  if (!cWindow.movieLibraryConfig) {
     errorAlertElem.innerText = 'Error: Configuration does not exist or is not able to be loaded. Check the console.';
     return;
   }
+  for (const key in cWindow.movieLibraryConfig) {
+    // @ts-expect-error
+    if (cWindow.movieLibraryConfig[key] !== undefined) movieLibraryConfig[key] = cWindow.movieLibraryConfig[key];
+  }
   
-  const movies = (movieLibraryConfig.movies || []).map(x => {
+  const movies = movieLibraryConfig.movies.map(x => {
     /** @type {Movie} */
     const movie = {
       id: x.id || '',
@@ -1750,7 +1761,7 @@ function init() {
     movies.sort(cWindow.movieLibrarySort);
   }
   
-  const tvShows = (movieLibraryConfig.tvShows || []).map(x => {
+  const tvShows = movieLibraryConfig.tvShows.map(x => {
     /** @type {TVShow} */
     const tvShow = {
       id: x.id || '',
@@ -2056,7 +2067,7 @@ M:\TV\Death Note\Season 01\01.37 - New World.mp4
       title: movie.title,
       imageURL: movie.thumbURL,
       action: () => new DetailScreen(movie).show()
-    })), movieLibraryConfig?.enableGridNavWrap).show()
+    })), movieLibraryConfig.enableGridNavWrap).show()
    }, {
     title: 'Parents',
     action: () => new PinScreen('1141', () =>
@@ -2066,14 +2077,14 @@ M:\TV\Death Note\Season 01\01.37 - New World.mp4
           title: movie.title,
           imageURL: movie.thumbURL,
           action: () => new DetailScreen(movie).show()
-        })), movieLibraryConfig?.enableGridNavWrap).show()
+        })), movieLibraryConfig.enableGridNavWrap).show()
       }, {
         title: 'Shows',
         action: () => new GridScreen(tvShows.map(tvShow => ({
           title: tvShow.title,
           imageURL: tvShow.thumbURL,
           action: () => new TVShowScreen(tvShow).show()
-        })), movieLibraryConfig?.enableGridNavWrap).show()
+        })), movieLibraryConfig.enableGridNavWrap).show()
       }, {
         title: 'TV',
         action: () => new PlayerScreen(tvPlaylistItems, {

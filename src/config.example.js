@@ -1,5 +1,5 @@
 window.movieLibraryConfig = {
-  enableGridNavWrap: false,
+  enableGridNavWrap: true,
   enableMouseAtStart: false,
   movies: [
     {

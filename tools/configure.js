@@ -66,7 +66,11 @@ function createConfig() {
     movies,
     tvShows,
   };
-  const configJSON = JSON.stringify(config, (key, val) => (!val || (Array.isArray(val) && val.length === 0)? undefined : val));
+  const configJSON = JSON.stringify(config, function (key, val) {
+    if (this === config) return val; // Top level keys
+    if (!val || (Array.isArray(val) && val.length === 0)) return undefined;
+    return val;
+  });
   const configJS = 'window.movieLibraryConfig = ' + configJSON + ';';
   fs.writeFileSync(path.join(__dirname, '..', 'src', 'config.js'), configJS, 'utf8');
 }

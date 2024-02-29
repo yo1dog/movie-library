@@ -72,14 +72,14 @@ export interface Episode extends EpisodeBase {
 
 type PartialDeep<T> = T extends any[]? PartialDeep<T[number]>[] : T extends object? {[P in keyof T]?: PartialDeep<T[P]>} : T;
 export interface Config {
- enableGridNavWrap?: boolean;
- enableMouseAtStart?: boolean;
+ enableGridNavWrap: boolean;
+ enableMouseAtStart: boolean;
  movies: PartialDeep<Movie>[];
  tvShows: PartialDeep<TVShow>[];
 }
 
 export interface CustomWindow {
-  movieLibraryConfig?: Config;
+  movieLibraryConfig?: Partial<Config>;
   movieLibraryFilter?: (movie: Movie) => boolean;
   movieLibrarySort?: (movieA: Movie, movieB: Movie) => number;
   tvShowLibrarySort?: (tvShowA: TVShow, tvShowB: TVShow) => number;
