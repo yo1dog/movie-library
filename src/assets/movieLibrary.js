@@ -293,7 +293,7 @@ let deeplinkSlugs = [];
 
 class Screen {
   /** @type {(() => void) | undefined} */
-  #onHidingCB;
+  #onHideStartCB;
   
   /**
    * @param {HTMLElement} elem 
@@ -390,7 +390,7 @@ class Screen {
   
   /** @param {(() => void) | undefined} cb */
   setOnHideStartCB(cb) {
-    this.onHideStartCB = cb;
+    this.#onHideStartCB = cb;
   }
   
   hide() {
@@ -409,7 +409,7 @@ class Screen {
     }
     
     this.isShown = false;
-    this.onHideStartCB?.();
+    this.#onHideStartCB?.();
     
     if (!this.transitionAnimation.currentTime) {
       return;
