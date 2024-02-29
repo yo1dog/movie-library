@@ -1256,6 +1256,7 @@ class PlayerScreen extends Screen {
     const screenElem = requireElem('main', frag);
     const videoElem = /** @type {HTMLVideoElement} */(requireElem('video', screenElem));
     const playerElem = requireElem('.player', screenElem);
+    const playerHeaderElem = requireElem('.playerHeader', screenElem);
     const headerBackElem = requireElem('.playerHeader > div', screenElem);
     const titleElem = requireElem('.playerTitle', screenElem);
     const subtitleElem = requireElem('.playerSubtitle', screenElem);
@@ -1317,7 +1318,10 @@ class PlayerScreen extends Screen {
         }
       }},
     ];
-    headerBackElem.addEventListener('click', () => this.close());
+    headerBackElem.addEventListener('click', event => {
+      this.close();
+      event.stopPropagation(); // Prevent toggling play/pause.
+    });
     
     if (playlistItems.length === 1) {
       navListItems.splice(navListItems.findIndex(x => x.elem === previousButtonElem), 1);
@@ -1432,6 +1436,14 @@ class PlayerScreen extends Screen {
         extendControls(PLAYER_CONTROLS_TIMEOUT_PLAY_MS);
       }
     }
+    function toggleFullscreen() {
+      if (document.fullscreenElement) {
+        void document.exitFullscreen();
+      }
+      else {
+        void document.body.requestFullscreen({navigationUI: 'hide'});
+      }
+    }
     
     deactivateControls();
     updatePlayPauseUI();
@@ -1496,6 +1508,7 @@ class PlayerScreen extends Screen {
       setPlaylistIndex(curPlaylistIndex + 1);
     });
     
+    playerHeaderElem.addEventListener('click', () => togglePlayPause());
     videoElem.addEventListener('click', () => togglePlayPause());
     
     scrubberElem.addEventListener('mousedown', () => {
