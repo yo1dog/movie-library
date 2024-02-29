@@ -1310,12 +1310,7 @@ class PlayerScreen extends Screen {
         setPlaylistIndex(curPlaylistIndex + 1);
       }},
       {elem: fullscreenButtonElem, action: () => {
-        if (document.fullscreenElement) {
-          void document.exitFullscreen();
-        }
-        else {
-          void document.body.requestFullscreen({navigationUI: 'hide'});
-        }
+        toggleFullscreen();
       }},
     ];
     headerBackElem.addEventListener('click', event => {
@@ -1510,6 +1505,9 @@ class PlayerScreen extends Screen {
     
     playerHeaderElem.addEventListener('click', () => togglePlayPause());
     videoElem.addEventListener('click', () => togglePlayPause());
+    
+    playerHeaderElem.addEventListener('dblclick', () => toggleFullscreen());
+    videoElem.addEventListener('dblclick', () => toggleFullscreen());
     
     scrubberElem.addEventListener('mousedown', () => {
       selectScrubber();
