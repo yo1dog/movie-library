@@ -125,7 +125,7 @@ function loadMovie(nfoDirent, dir, dirents) {
     logoURL: buildFileURL(dir, dirents.find(x => x.name === `${baseFilename}-clearlogo.png`)),
     keyartURL: buildFileURL(dir, dirents.find(x => x.name === `${baseFilename}-keyart.jpg`)),
     clearartURL: buildFileURL(dir, dirents.find(x => x.name === `${baseFilename}-clearart.png`)),
-    videoFilepath: posixToWin(path.join(dir, videoFile.name)),
+    videoURL: buildFileURL(dir, videoFile),
   };
   return movie;
 }
