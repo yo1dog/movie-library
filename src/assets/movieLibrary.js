@@ -811,6 +811,7 @@ class DetailScreen extends Screen {
       elem: playButtonElem,
       action: () => new PlayerScreen({
         videoURL: movie.videoURL,
+        sasSubtitleAssURL: movie.sasSubtitleAssURL,
         title: movie.title,
       }).show()
     }]);
@@ -1049,6 +1050,7 @@ class TVShowScreen extends Screen {
         
         playlistItems.push({
           videoURL: episode.videoURL,
+          sasSubtitleAssURL: episode.sasSubtitleAssURL,
           title: tvShow.title,
           subtitle: playerSubtitle,
         });
@@ -1327,6 +1329,7 @@ class PinScreen extends Screen {
 /**
  * @typedef PlaylistItem
  * @property {string} videoURL
+ * @property {string} [sasSubtitleAssURL]
  * @property {string} [title]
  * @property {string} [subtitle]
  */
@@ -1644,13 +1647,20 @@ class PlayerScreen extends Screen {
     
     playerElem.addEventListener('mousemove', debounce(100, () => activateControls()));
     
-    // new SubtitlesOctopus({
-    //   video: videoElem,
-    //   subUrl: new URL('./assets/test.ass', window.location.href).href,
-    //   workerUrl: './assets/lib/libass-wasm-4.1.0/subtitles-octopus-worker.js',
-    //   legacyWorkerUrl: './assets/lib/libass-wasm-4.1.0/subtitles-octopus-worker-legacy.js',
-    //   debug: true
-    // });
+    // For ASS subtitle rendering to work in Chrome/Edge, see README.md
+    /** @type {import('./lib/libass-wasm-4.1.0/subtitles-octopus')} */
+    // @ts-expect-error
+    // eslint-disable-next-line no-undef
+    const subOctopus = new SubtitlesOctopus({
+      video: videoElem,
+      workerUrl: './assets/lib/libass-wasm-4.1.0/subtitles-octopus-worker.js',
+      legacyWorkerUrl: './assets/lib/libass-wasm-4.1.0/subtitles-octopus-worker-legacy.js',
+      subContent: `[V4+ Styles]\n[Events]`,
+      fonts: [
+        '#44v2.ttf','AdobeFanHeitiStd-B -Dangan.ttf','AdobeHeiti-Kami_0.ttf','Advert-Regular.otf','Aero Matics Regular.ttf','akarinop.ttf','akbar.TTF','albatross.TTF','Alegreya-Bold.otf','AlegreyaSC-Regular.otf','Aller-Light_0.ttf','Aller-Regular.ttf','AllThatMatters.ttf','AMARANTH-ITALIC.TTF','AMARANTH-REGULAR.TTF','andlso.ttf','angelina.ttf','ANNA.otf','ANNA.ttf','A-OTF-ShinMGoPro-Bold_0.ttf','APJFK-AnoHana.ttf','APPOPAIN.TTF','aprifa.ttf','AracneRegular.TTF','ARCENA_0.ttf','ARIACB.ttf','arial-Bold.TTF','arial.TTF','ArnoPro-Caption.otf','ArnoPro-SmText.otf','Arno Pro SmText.ttf','aver-Bold.TTF','AveriaSerif-Bold.ttf','AveriaSerif-Light.ttf','aver.TTF','BAARS.TTF','BAARS___.TTF','badabb.ttf','Baka Lag.ttf','Baqa.otf','Barthowheel Regular.ttf','BD_Cartoon_Shout.ttf','BeautifulEveryTime-Regular.ttf','BeeMarkerInk.TTF','bellgothicstd-black_0.otf','BertoltBrecht.ttf','bip.ttf','Blambot Pro Lite Bold.ttf','blemished.ttf','Bolide-Regular.ttf','BOOKOS.TTF','Brianne_s_hand.ttf','BRODYN.TTF','Brushcut-Regular.ttf','Brushcut.ttf','Brush-cut v2.ttf','brush-hyouka.ttf','Brush Strokes_0.ttf','BrushStrokes-Bold.ttf','BrushStrokes.TTF','brushtype-semibold.ttf','BRUSHTYP.TTF','BTCTRIAL.otf','BubblegumSans-Regular.ttf','Bubblegun.ttf','CALIBRIB_0.TTF','calibrib.ttf','CALIFB.TTF','calistoga.TTF','cambriab.ttf','cambria.ttc','CandelaBold_0.otf','CandelaBoldItalic.otf','CandelaBook.otf','CandelaItalic.otf','Candombe.ttf','carbona.ttf','CaxtonStd-Bold.otf','CaxtonStd-Book.otf','CENTAUR.TTF','CentraleSansRnd-ExtraBold.ttf','chalkboard.ttf','chalk-bold.ttf','ChaparralPro-Regular.otf','Cheboyga.ttf','Chief_Blueprint.ttf','Chinacat.ttf','chinrg.ttf','Chuu2-next.ttf','Chuu2.ttf','chuunv2.ttf','cinnamon cake.ttf','circhand.ttf','cityburn.TTF','classhyouka.ttf','ClearfaceGothicLTStd-Black.otf','clingy.ttf','Comfortaa Bold.ttf','Comfortaa Regular.ttf','Comfortaa Thin.ttf','ComicBook.TTF','Complete in Him.ttf','COPRGTL.TTF','Copybook.TTF','corbelb.ttf','corbel.ttf','Corinthian Medium.ttf','CostaPtf-Italic.otf','CREABBRG.ttf','CTMercuriusStd-Medium.otf','cv pixelado.ttf','dandelion in the spring.ttf','Days.otf','DeathrattleBb.TTF','DejaVuSerif.ttf','Denne Marker.ttf','Dersu Uzala brush.ttf','DFENKAISTRIPPED-W5G.TTF','DFKanTeiRyu-XB -NakaImo.ttf','DFPLeiSho-SB.ttf','DFPTFLeiSho-W7-Denpa.ttf','DISTINKING-BOLD_0.OTF','DISTInking-Regular.otf','DK Crayon Crumble.ttf','DkLongreach.OTF','Dokyo.ttf','DroidSans-Regular.ttf','Earthsmbe.ttf','edosz.ttf','EncodeSansCondensed-Bold.TTF','EncodeSansSemiCondensedExbd-ExtraBold.TTF','Epittazio.ttf','erasdust.ttf','eraserdust.ttf','estre_0.ttf','fansubBlock.ttf','Faraco Hand.ttf','FastBrush.ttf','fawn.ttf','Fela.otf','Fennario.ttf','fifawelcome1.3.ttf','Filmcrypob.ttf','Filmcryptic.ttf','FloodStd.otf','Flux-Bold.ttf','Fontin_Sans_R.otf','Formata.ttf','FOT-HummingStd-v999.ttf','FOT-MatisseVPro-EB.otf','FOT-MatisseVPro-UB.otf','Franchise-Bold-hinted_0.ttf','Frank Black.ttf','Franklin Gothic Medium Italic.ttf','Franklin Gothic Medium.ttf','FreePixel.ttf','FuckMyr v9001.ttf','GandhiSans-BoldItalic.OTF','GandhiSans-Bold.OTF','georgia.ttf','GIL__.TTF','GOTHICB.TTF','Grantham Bold.ttf','GrungeStrokes01.TTF','HammersmithOne.ttf','Handana Bold.ttf','handsean.ttf','hapole_pencil.ttf','Happy Hell.ttf','Happy_Hell.ttf','HARLC_.TTF','HARNGTON.TTF','HeiseiKakuGoStd-WEnv.ttf','HelveticaCdBlk.ttf','Henn.ttf','HeyOctober.OTF','HighlanderStd-BoldItalic.otf','HighlanderStd-Bold.otf','HighlanderStd-BookItalic.otf','HighlanderStd-Book.otf','HighlanderStd-MediumItalic.otf','HighlanderStd-Medium.otf','HighMountPersonalUse.OTF','Hira v2.ttf','HlBrush3bk.TTF','HoboStd.otf','HTOWERT.TTF','Hui v2.ttf','HWYGOTH.TTF','IgniteTheLight.ttf','Impress BT.ttf','INFO56.ttf','Ingleby_bold_italic.ttf','Ingleby_bold.ttf','Ingleby_italic.ttf','Ingleby_regular.ttf','iskpota.ttf','It Aint Rocket Science.ttf','IWAMINPRO-MD-KAMI.TTF','IwaNGoPro-Bd-CP.ttf','IwaNGoPro-Md-AW.ttf','IwaOMinPro-Bd-Fate.ttf','IwaOMinPro-Hv-Fate.ttf','IwaOMinPro.ttf','JakeBitchDude.ttf','JandaAmazingGrace-Regular.ttf','JandaEverydayCasual.ttf','JandaManateeSolid.ttf','Japestyle Plain.ttf','JDLEDdekophone.otf','Jenkins v2.0.ttf','JENKINSV2.TTF','JENKT.TTF','JennaSue_1.ttf','JennaSue.ttf','Jennifers Hand Writing.ttf','Jerry_B4s_handwriting.ttf','JH2TRIAL.otf','JockeyOne-Regular.ttf','JohnsHand-Regular.ttf','JP Hand Straight.ttf','JustTheWayYouAre.ttf','KFHIMAJI-fff-mod.ttf','KGNexttoMe-Solid.ttf','KGShadowOfTheDay.ttf','kleinkarpets.TTF','LABTG.ttf','LABTG_.ttf','LABTG__.ttf','lazer84.TTF','leelawad.ttf','LEVIBRUSH.TTF','LibbyHand.ttf','LSANSD.TTF','lsans.ttf','LT_3italic.ttf','LT_70895i.ttf','LT.ttf','macron finnetier 0.3.ttf','madness.ttf','MarkerScribbles.OTF','MarkerScript.ttf','Marker SD.ttf','maya.ttf','MeriendaOne-Regular.ttf','Merienda-Regular.ttf','Minecraftia.ttf','mine.ttf','Montara-Gothic.otf','motrg_.ttf','MVBOLI.TTF','MyriadPro-SemiCn.ttf','MyriadWebPro.ttf','New Geneva Nine ICG.ttf','Note this_0.ttf','nrkis.ttf','OCRASTD.OTF','One Off Cafe.ttf','One Off Mincho.ttf','One Off Title.ttf','Overlock-BoldItalic.ttf','Panzer VAG.ttf','PAPEJE.TTF','PaperJohnnyEins-Regular.otf','Paper Johnny Eins.ttf','pencilgrid.ttf','PeoniPatterns.TTF','Perfect DOS VGA 437.ttf','PIXEARG.TTF','pixelmix.ttf','pixelplay.ttf','Ponderatta.ttf','poppins-Bold.TTF','PoppinsExtrabold-ExtraBold.TTF','PPETRIAL.otf','PPETRIAL.ttf','QuattrocentoSans-BoldItalic.ttf','QuattrocentoSans-Bold.ttf','RaleighLTStd-Bold.otf','RC My Dream Font.ttf','RiiT.otf','RolandBecker Bold.ttf','RolandBecker.ttf','Sakurasou-next ep.ttf','Salsa-Regular.ttf','Samurai-Gosick.ttf','SEBASTIAN_INFORMAL.otf','seguisb.ttf','Senran gothic ep.ttf','Senran Haru.ttf','SerangkaianPattern.TTF','Sexy Love Hearts 2.ttf','SFCOMICSCRIPT-BOLD.TTF','ShannonStd-Bold.otf','Shanty Hand.otf','SharonScript.ttf','SkamFont.TTF','Smilecomix.ttf','Snake.ttf','splatter.TTF','SqueakyChalkSound.ttf','STAMPACT.TTF','STENB__.TTF','STENCILC.TTF','SubClearSans-Bold.ttf','SubwayNovellaDEMO.ttf','SwaggerLight.ttf','Sweet About.otf','Sweetie Pie.ttf','Swiss 721 Thin BT_0.ttf','SWZ721H.ttf','SWZ721L.ttf','SWZ721M.TTF','tahoma_1.ttf','tahomabd.ttf','tamayura-handwriting_0.ttf','tamayura-handwriting.ttf','TanukiMagic-CP.ttf','TariStick.ttf','TEKTONPRO-BOLD.OTF','Tellural Bold.ttf','Tellural.ttf','TEMPSITC.TTF','thinfont-thin.ttf','thinv999.ttf','ThrowMyHandsUpintheAir.ttf','timesbd.ttf','title-berserk.ttf','titlesakurasou2.ttf','titlesakurasou.ttf','toxia.TTF','Trivia.otf','tt0005m_.ttf','tt0663m.ttf','TwinMarker.ttf','Ubuntu-BI.ttf','Ubuntu-B.ttf','ufonts.com_swis721-md-bt-medium_0.ttf','Usuzi.ttf','utsaah.ttf','VAG Rounded BT.TTF','VAGRounded Lt-Normal.ttf','VAGRoundedStd-Bold.otf','verdana_0.ttf','verdanab_0.ttf','verdanab.ttf','verdanai_0.ttf','verdana.ttf','verdanaz_0.ttf','Vesta-Bold.otf','VINERITC.TTF','volkswagen-bold.TTF','WcRhesusBBta.OTF','WhatDoWeDoAllDay_Regular.ttf','whatever it takes.ttf','WorkSans-Bold.TTF','XangdaShiny.TTF','YANK_H.ttf','Yiggivoo UC_I.ttf','Yiggivoo UC.ttf','YozakuraJp-Medium.OTF','Yryr minc R.ttf','yryr uzura.ttf',
+      ].map(x => `file://M:/Data/Fonts/${encodeURIComponent(x)}`),
+      debug: true
+    });
     
     /** @param {number} playlistIndex */
     function setPlaylistIndex(playlistIndex) {
@@ -1679,6 +1689,11 @@ class PlayerScreen extends Screen {
       videoElem.load();
       //void videoElem.play();
       updatePlayPauseUI();
+      
+      subOctopus.freeTrack();
+      if (playlistItem.sasSubtitleAssURL) {
+        subOctopus.setTrackByUrl(playlistItem.sasSubtitleAssURL);
+      }
     }
     
     setPlaylistIndex(initalPlaylistPosition.index);
@@ -1703,6 +1718,7 @@ class PlayerScreen extends Screen {
     this.getIsScrubberActive = () => isScrubberActive;
     this.getIsPlaying = getIsPlaying;
     this.calcPlayerSkipDurS = calcPlayerSkipDurS;
+    this.subOctopus = subOctopus;
   }
   
   show() {
@@ -1793,6 +1809,12 @@ class PlayerScreen extends Screen {
     }
     return super.handleKey(event, keyAction);
   }
+  
+  /** @param {Parameters<Screen['close']>} args */
+  close(...args) {
+    super.close(...args);
+    this.subOctopus.dispose();
+  }
 }
 
 function init() {
@@ -1831,6 +1853,7 @@ function init() {
       logoURL: x.logoURL || '',
       keyartURL: x.keyartURL || '',
       clearartURL: x.clearartURL || '',
+      sasSubtitleAssURL: x.sasSubtitleAssURL || '',
       videoURL: x.videoURL || '',
     };
     return movie;
@@ -1908,6 +1931,7 @@ function init() {
               ...mapEpisodeBase(x),
               episodeOrd: x.episodeOrd || 0,
               thumbURL: x.thumbURL || '',
+              sasSubtitleAssURL: x.sasSubtitleAssURL || '',
               videoURL: x.videoURL || '',
               multiepisodeBases: (x.multiepisodeBases || []).map(mapEpisodeBase),
             };
@@ -1977,6 +2001,12 @@ M:\Bumpers\Ambient Swim Bumpers\bump147.mp4
   //     ]).show()
   //   ).show()
   // }]).show();
+  
+  // const exampleEpisode = tvShows.find(x => x.title.startsWith('One-Punch Man'))?.seasons.flatMap(s => s.episodes).find(x => x.title.startsWith('The Shadow That Snuck Up Too Close'));
+  // new PlayerScreen({
+  //   videoURL: exampleEpisode?.videoURL,
+  //   sasSubtitleAssURL: exampleEpisode?.sasSubtitleAssURL,
+  // }).show();
   
   new MenuScreen([{
     title: 'Kids',

@@ -131,6 +131,7 @@ function loadMovie(nfoDirent, dir, dirents) {
     logoURL: buildFileURL(dir, dirents.find(x => x.name === `${baseFilename}-clearlogo.png`)),
     keyartURL: buildFileURL(dir, dirents.find(x => x.name === `${baseFilename}-keyart.jpg`)),
     clearartURL: buildFileURL(dir, dirents.find(x => x.name === `${baseFilename}-clearart.png`)),
+    sasSubtitleAssURL: buildFileURL(dir, dirents.find(x => x.name === `${baseFilename}-sas.ass`)),
     videoURL: buildFileURL(dir, videoFile),
   };
   return movie;
@@ -231,6 +232,7 @@ function loadTVShow(nfoDirent, dir, dirents) {
     }
     
     const thumbURL = buildFileURL(dir, dirents.find(x => x.name === `${baseFilename}-thumb.jpg`));
+    const sasSubtitleAssURL = buildFileURL(dir, dirents.find(x => x.name === `${baseFilename}-sas.ass`));
     const videoURL = buildFileURL(dir, videoFile);
     
     /** @type {Episode} */
@@ -240,6 +242,7 @@ function loadTVShow(nfoDirent, dir, dirents) {
         ...episodeBases[0],
         episodeOrd: 0,
         thumbURL,
+        sasSubtitleAssURL,
         videoURL,
         multiepisodeBases: [],
       };
@@ -262,6 +265,7 @@ function loadTVShow(nfoDirent, dir, dirents) {
         directorNames: episodeBases.map(x => x.directorNames).reduce((arr, x) => arr.concat(x)).filter((x, i, a) => a.indexOf(x) === i),
         actorNames: episodeBases.map(x => x.actorNames).reduce((arr, x) => arr.concat(x)).filter((x, i, a) => a.indexOf(x) === i),
         thumbURL,
+        sasSubtitleAssURL,
         videoURL,
         multiepisodeBases: episodeBases,
       };

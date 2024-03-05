@@ -19,6 +19,7 @@ export interface Movie {
   logoURL: string;
   keyartURL: string;
   clearartURL: string;
+  sasSubtitleAssURL: string;
   videoURL: string;
 }
 
@@ -66,6 +67,7 @@ export interface EpisodeBase {
 export interface Episode extends EpisodeBase {
   episodeOrd: number;
   thumbURL: string;
+  sasSubtitleAssURL: string;
   videoURL: string;
   multiepisodeBases: EpisodeBase[];
 }
