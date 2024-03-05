@@ -772,6 +772,9 @@ class DetailScreen extends Screen {
     }
     
     ratingImgElems.forEach(x => {
+      if (movie.rating === 'na') {
+        x.style.display = 'none';
+      }
       const url = movie.rating? getRatingImgURL(movie.rating) : '';
       x.src = url;
       x.alt = movie.rating;
@@ -896,7 +899,7 @@ class TVShowScreen extends Screen {
       }
     }
     
-    if (tvShow.rating) {
+    if (tvShow.rating && tvShow.rating !== 'na') {
       const ratingImgURL = getRatingImgURL(tvShow.rating) || '';
       ratingImgElem.src = ratingImgURL;
       ratingImgElem.alt = tvShow.rating;
