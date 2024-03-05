@@ -1,0 +1,6 @@
+{
+  // Disable type checking for this dir.
+  "compilerOptions": {
+    "checkJs": false
+  }
+}

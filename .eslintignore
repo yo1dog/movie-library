@@ -1,3 +1,4 @@
-config.js
-config.example.js
-*.d.ts
+/src/config.js
+/src/config.example.js
+/src/assets/lib/**/*
+!/src/assets/lib/diffString.js

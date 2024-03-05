@@ -70,6 +70,7 @@ export interface Episode extends EpisodeBase {
   multiepisodeBases: EpisodeBase[];
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type PartialDeep<T> = T extends any[]? PartialDeep<T[number]>[] : T extends object? {[P in keyof T]?: PartialDeep<T[P]>} : T;
 export interface Config {
  enableGridNavWrap: boolean;

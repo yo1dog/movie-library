@@ -1,3 +1,4 @@
+// @ts-check
 // https://github.com/kpdecker/jsdiff/blob/master/src/diff/base.js
 /**
  * @typedef Path
