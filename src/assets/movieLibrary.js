@@ -1421,6 +1421,7 @@ class VideoPlayerSingletonRef {
   /** @param {string} url */
   setSubTrackByUrl(url) {this.#singletonRef.subOctopus.setTrackByUrl(url);}
   freeSubTrack() {this.#singletonRef.subOctopus.freeTrack();}
+  resizeSubCanvas() {this.#singletonRef.subOctopus.resize();}
   clearSubs() {
     this.#singletonRef.subOctopus.setCurrentTime(0);
     this.#singletonRef.subOctopus.setIsPaused(true);
@@ -1491,6 +1492,7 @@ class PlayerScreen extends Screen {
     
     const videoRef = VideoPlayerSingletonRef.takeRef();
     videoRef.attach(videoPlayerSingletonContainerElem);
+    videoRef.resizeSubCanvas(); // Video elem may have been resized while it was not attached to DOM.
     
     /** @param {KeyboardEvent | MouseEvent} [event] */
     function calcPlayerSkipDurS(event) {
@@ -1707,6 +1709,9 @@ class PlayerScreen extends Screen {
       updateVideoTimeUI(videoRef.currentTime);
       updatePlayPauseUI();
       scrubberElem.disabled = false;
+      // For some reason, SubtitlesOctopus stops listening after the inital loadedmetadata event,
+      // but it needs to resize for each video.
+      videoRef.resizeSubCanvas();
     };
     videoRef.ondurationchange = () => {
       updateVideoDurationUI(videoRef.duration);
