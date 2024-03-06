@@ -1355,6 +1355,7 @@ class VideoPlayerSingletonRef {
     singleton.videoElem.addEventListener('waiting', ev => this.#curRef.onwaiting?.(ev));
     singleton.videoElem.addEventListener('playing', ev => this.#curRef.onplaying?.(ev));
     singleton.videoElem.addEventListener('ended', ev => this.#curRef.onended?.(ev));
+    singleton.videoElem.addEventListener('loadstart', ev => this.#curRef.onloadstart?.(ev));
   }
   
   static takeRef() {
@@ -1398,6 +1399,7 @@ class VideoPlayerSingletonRef {
   /** @type {null | ((...args: Parameters<NonNullable<HTMLVideoElement['onwaiting']>>) => void)} */ onwaiting = null;
   /** @type {null | ((...args: Parameters<NonNullable<HTMLVideoElement['onplaying']>>) => void)} */ onplaying = null;
   /** @type {null | ((...args: Parameters<NonNullable<HTMLVideoElement['onended']>>) => void)} */ onended = null;
+  /** @type {null | ((...args: Parameters<NonNullable<HTMLVideoElement['onloadstart']>>) => void)} */ onloadstart = null;
 
   get currentTime() {return this.#singletonRef.videoElem.currentTime;}
   set currentTime(currentTime) {this.#singletonRef.videoElem.currentTime = currentTime;}
@@ -1412,14 +1414,16 @@ class VideoPlayerSingletonRef {
   load() {this.#singletonRef.videoElem.load();}
   pause() {this.#singletonRef.videoElem.pause();}
   play() {return this.#singletonRef.videoElem.play();}
+  removeSrc() {
+    this.#singletonRef.videoElem.removeAttribute('src');
+  }
   
   /** @param {string} url */
   setSubTrackByUrl(url) {this.#singletonRef.subOctopus.setTrackByUrl(url);}
   freeSubTrack() {this.#singletonRef.subOctopus.freeTrack();}
   clearSubs() {
-    /** @type {HTMLCanvasElement} */
-    const canvasElem = this.#singletonRef.subOctopus.canvas;
-    canvasElem.style.display = 'none';
+    this.#singletonRef.subOctopus.setCurrentTime(0);
+    this.#singletonRef.subOctopus.setIsPaused(true);
   }
 }
 
@@ -1458,7 +1462,7 @@ class PlayerScreen extends Screen {
     /** @type {boolean} */
     let isWaiting; // TODO: Should track this with video elem prop instead?
     
-    let canUpdateState = stateUpdateReqContinuousPlayDurSec === 0;
+    let canUpdateState = false;
     let playDurAnchorTimeSec = -2;
     //let playDurSec = 0;
     
@@ -1508,7 +1512,7 @@ class PlayerScreen extends Screen {
         this.close()
       },
       {elem: previousButtonElem, disabledAction: DISABLED_ACTION.SKIP, action: () => {
-        setPlaylistIndex(curPlaylistIndex - 1);
+        setPlaylistPosition(curPlaylistIndex - 1);
       }},
       {elem: rewindButtonElem, action: event => {
         setVideoTime(videoRef.currentTime - calcPlayerSkipDurS(event));
@@ -1520,7 +1524,7 @@ class PlayerScreen extends Screen {
         setVideoTime(videoRef.currentTime + calcPlayerSkipDurS(event));
       }},
       {elem: nextButtonElem, disabledAction: DISABLED_ACTION.SKIP, action: () => {
-        setPlaylistIndex(curPlaylistIndex + 1);
+        setPlaylistPosition(curPlaylistIndex + 1);
       }}
     ];
     
@@ -1604,7 +1608,7 @@ class PlayerScreen extends Screen {
       timeSec = Math.max(Math.min(timeSec, videoRef.duration || 0), 0);
       setVideoElemCurrentTimeDebounced(timeSec);
       updateVideoTimeUI(timeSec, skipUpdateScrubberValue);
-    } 
+    }
     /**
      * @param {number} timeSec 
      * @param {boolean} [skipUpdateScrubberValue] 
@@ -1627,7 +1631,12 @@ class PlayerScreen extends Screen {
       return !videoRef.paused && !videoRef.ended;
     }
     function updatePlayPauseUI() {
-      if (getIsPlaying()) {
+      if (!videoRef.src) {
+        playSVG.style.display = 'none';
+        pauseSVG.style.display = 'none';
+        loadingSVG.style.display = '';
+      }
+      else if (getIsPlaying()) {
         playSVG.style.display = 'none';
         //const isWaiting = videoRef.readyState < videoRef.HAVE_FUTURE_DATA;
         if (isWaiting) {
@@ -1706,6 +1715,9 @@ class PlayerScreen extends Screen {
       updateVideoTimeUI(videoRef.currentTime);
       updatePlaylistState();
     };
+    videoRef.onloadstart = () => {
+      playDurAnchorTimeSec = -1;
+    };
     videoRef.onseeking = () => {
       playDurAnchorTimeSec = -2;
     };
@@ -1713,6 +1725,7 @@ class PlayerScreen extends Screen {
       playDurAnchorTimeSec = -1;
     };
     videoRef.onplay = () => {
+      playDurAnchorTimeSec = -1;
       updatePlayPauseUI();
     };
     videoRef.onpause = () => updatePlayPauseUI();
@@ -1722,13 +1735,12 @@ class PlayerScreen extends Screen {
       updatePlayPauseUI();
     };
     videoRef.onplaying = () => {
-      playDurAnchorTimeSec = -1;
       isWaiting = false;
       updatePlayPauseUI();
     };
     videoRef.onended = () => {
       updatePlayPauseUI();
-      setPlaylistIndex(curPlaylistIndex + 1);
+      setPlaylistPosition(curPlaylistIndex + 1);
     };
     
     playerHeaderElem.addEventListener('click', () => togglePlayPause());
@@ -1752,8 +1764,29 @@ class PlayerScreen extends Screen {
     
     playerElem.addEventListener('mousemove', debounce(100, () => activateControls()));
     
-    /** @param {number} playlistIndex */
-    function setPlaylistIndex(playlistIndex) {
+    // Small delay prevents flashing. Especially with subtitles. Also prevents subtitles from not
+    // sometimes not showing when resuming a video.
+    const setVideoElemSrcDelayed = delay(200,
+    /**
+     * @param {string} src
+     * @param {number} [startSec]
+     */
+    (src, startSec) => {
+      if (!videoRef.hasRef()) return;
+      videoRef.src = src;
+      void videoRef.play();
+      
+      if (startSec) {
+        setVideoElemCurrentTimeDebounced(startSec);
+        setVideoElemCurrentTimeDebounced.flush();
+      }
+    });
+    
+    /**
+     * @param {number} playlistIndex
+     * @param {number} [startSec] 
+     */
+    function setPlaylistPosition(playlistIndex, startSec) {
       playlistIndex = Math.max(Math.min(playlistIndex, playlistItems.length - 1), 0);
       if (curPlaylistIndex === playlistIndex) return;
       
@@ -1775,8 +1808,10 @@ class PlayerScreen extends Screen {
       updateVideoTimeUI(0);
       updateVideoDurationUI(0);
       isWaiting = true;
-      videoRef.src = playlistItem.videoURL;
+      videoRef.removeSrc();
       videoRef.load();
+      videoRef.currentTime = 0;
+      videoRef.clearSubs();
       //void videoRef.play();
       updatePlayPauseUI();
       
@@ -1784,16 +1819,11 @@ class PlayerScreen extends Screen {
       if (playlistItem.sasSubtitleAssURL) {
         videoRef.setSubTrackByUrl(playlistItem.sasSubtitleAssURL);
       }
+      
+      setVideoElemSrcDelayed(playlistItem.videoURL, startSec);
     }
     
-    setPlaylistIndex(initalPlaylistPosition.index);
-    if (initalPlaylistPosition.startSec) {
-      setVideoElemCurrentTimeDebounced(initalPlaylistPosition.startSec);
-      setVideoElemCurrentTimeDebounced.flush();
-    }
-    
-    // Prevent subtitles from previous video from flashing.
-    videoRef.clearSubs();
+    setPlaylistPosition(initalPlaylistPosition.index, initalPlaylistPosition.startSec);
     
     super(screenElem);
     this.videoRef = videoRef;
@@ -2226,7 +2256,6 @@ function getPlaylistState(playlistStateID) {
 }
 /** @param {PlaylistState} playlistState */
 function savePlaylistState(playlistState) {
-  console.log('saved');
   localStorage.setItem(`playlistState_${playlistState.id}`, JSON.stringify(playlistState));
 }
 
@@ -2284,6 +2313,41 @@ function debouceNOOP() {
   const debounced = () => {/*noop*/};
   debounced.flush = () => {/*noop*/};
   return debounced;
+}
+
+/**
+ * @template {any[]} T
+ * @param {number} delayMS 
+ * @param {(...args: T) => void} fn 
+ * @returns {((...args: T) => void) & {flush: () => void}}
+ */
+function delay(delayMS, fn) {
+  /** @type {number} */
+  let timeoutID = 0;
+  /** @type {T | undefined} */
+  let pendingArgs = undefined;
+  /** @param {T} args */
+  const delayed = (...args) => {
+    if (timeoutID) {
+      clearTimeout(timeoutID);
+    }
+    pendingArgs = args;
+    timeoutID = setTimeout(() => {
+      timeoutID = 0;
+      pendingArgs = undefined;
+      fn(...args);
+    }, delayMS);
+  };
+  function flush() {
+    if (pendingArgs) {
+      clearTimeout(timeoutID);
+      const args = pendingArgs;
+      pendingArgs = undefined;
+      fn(...args);
+    }
+  }
+  delayed.flush = flush;
+  return delayed;
 }
 
 const MINUTE = 60;

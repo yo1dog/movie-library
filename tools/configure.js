@@ -409,13 +409,3 @@ function traverseDir(dir, maxDepth, predicate, _curDepth = 0, _matches = []) {
   }
   return _matches;
 }
-
-/** @param {string} posix */
-function posixToWin(posix) {
-  return posix.replace(/^\/mnt\/(.)\//, (_,x) => x.toUpperCase() + ':\\').replaceAll('/', '\\');
-}
-/** @param {string} win */
-function winToURL(win) {
-  return win.replaceAll('\\', '/');
-  return 'file:///' + posixToWin(path.join(dir, encodeURIComponent(dirent.name)));
-}
