@@ -17,6 +17,13 @@
 <body class="primaryTextColor">
   <pre id="errorAlert">Unknown Error. Check the console.</pre>
   
+  <!-- Container for singletons -->
+  <div style="display: none;">
+    <div id="videoPlayerSingleton" inert>
+      <video></video>
+    </div>
+  </div>
+  
   <template id="menuScreenTemplate">
     <main class="screen menuScreen">
       <div class="screenBody screenBodyPadding">
@@ -252,10 +259,6 @@
       </div>
     </main>
   </template>
-  
-  <div id="videoPlayerSingleton" inert>
-    <video></video>
-  </div>
 </body>
 
 </html>

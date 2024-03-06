@@ -2085,6 +2085,7 @@ function init() {
   );
   
   const videoPlayerSingletonElem = requireElem('#videoPlayerSingleton');
+  videoPlayerSingletonElem.remove();
   const videoElem = /** @type {HTMLVideoElement} */(requireElem('video', videoPlayerSingletonElem));
   
   // For ASS subtitle rendering to work in Chrome/Edge, see README.md
