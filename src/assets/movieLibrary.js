@@ -1356,6 +1356,7 @@ class VideoPlayerSingletonRef {
     singleton.videoElem.addEventListener('playing', ev => this.#curRef.onplaying?.(ev));
     singleton.videoElem.addEventListener('ended', ev => this.#curRef.onended?.(ev));
     singleton.videoElem.addEventListener('loadstart', ev => this.#curRef.onloadstart?.(ev));
+    singleton.videoElem.addEventListener('canplaythrough', ev => this.#curRef.oncanplaythrough?.(ev));
   }
   
   static takeRef() {
@@ -1400,6 +1401,7 @@ class VideoPlayerSingletonRef {
   /** @type {null | ((...args: Parameters<NonNullable<HTMLVideoElement['onplaying']>>) => void)} */ onplaying = null;
   /** @type {null | ((...args: Parameters<NonNullable<HTMLVideoElement['onended']>>) => void)} */ onended = null;
   /** @type {null | ((...args: Parameters<NonNullable<HTMLVideoElement['onloadstart']>>) => void)} */ onloadstart = null;
+  /** @type {null | ((...args: Parameters<NonNullable<HTMLVideoElement['oncanplaythrough']>>) => void)} */ oncanplaythrough = null;
 
   get currentTime() {return this.#singletonRef.videoElem.currentTime;}
   set currentTime(currentTime) {this.#singletonRef.videoElem.currentTime = currentTime;}
@@ -1410,6 +1412,8 @@ class VideoPlayerSingletonRef {
   get readyState() {return this.#singletonRef.videoElem.readyState;}
   get src() {return this.#singletonRef.videoElem.src;}
   set src(src) {this.#singletonRef.videoElem.src = src;}
+  get autoplay() {return this.#singletonRef.videoElem.autoplay;}
+  set autoplay(autoplay) {this.#singletonRef.videoElem.autoplay = autoplay;}
   
   load() {this.#singletonRef.videoElem.load();}
   pause() {this.#singletonRef.videoElem.pause();}
@@ -1423,7 +1427,7 @@ class VideoPlayerSingletonRef {
   freeSubTrack() {this.#singletonRef.subOctopus.freeTrack();}
   resizeSubCanvas() {this.#singletonRef.subOctopus.resize();}
   clearSubs() {
-    this.#singletonRef.subOctopus.setCurrentTime(0);
+    this.#singletonRef.subOctopus.setCurrentTime(-1);
     this.#singletonRef.subOctopus.setIsPaused(true);
   }
 }
@@ -1460,8 +1464,8 @@ class PlayerScreen extends Screen {
     
     /** @type {number} */
     let curPlaylistIndex;
-    /** @type {boolean} */
-    let isWaiting; // TODO: Should track this with video elem prop instead?
+    let isWaiting = true;
+    let isWaitingInital = true;
     
     let canUpdateState = false;
     let playDurAnchorTimeSec = -2;
@@ -1630,15 +1634,10 @@ class PlayerScreen extends Screen {
       durationElem.innerText = formatDuration(durationS);
     }
     function getIsPlaying() {
-      return !videoRef.paused && !videoRef.ended;
+      return isWaitingInital || (!videoRef.paused && !videoRef.ended);
     }
     function updatePlayPauseUI() {
-      if (!videoRef.src) {
-        playSVG.style.display = 'none';
-        pauseSVG.style.display = 'none';
-        loadingSVG.style.display = '';
-      }
-      else if (getIsPlaying()) {
+      if (getIsPlaying()) {
         playSVG.style.display = 'none';
         //const isWaiting = videoRef.readyState < videoRef.HAVE_FUTURE_DATA;
         if (isWaiting) {
@@ -1665,6 +1664,10 @@ class PlayerScreen extends Screen {
       else {
         void videoRef.play();
         extendControls(PLAYER_CONTROLS_TIMEOUT_PLAY_MS);
+      }
+      if (isWaitingInital) {
+        isWaitingInital = false;
+        updatePlayPauseUI();
       }
     }
     function toggleFullscreen() {
@@ -1723,6 +1726,8 @@ class PlayerScreen extends Screen {
     };
     videoRef.onloadstart = () => {
       playDurAnchorTimeSec = -1;
+      isWaitingInital = true;
+      updatePlayPauseUI();
       // Disabling and reenabling the scrubber between loads prevents odd interfaces when holding
       // down the scrubber between videos.
       scrubberElem.disabled = true;
@@ -1734,10 +1739,14 @@ class PlayerScreen extends Screen {
       playDurAnchorTimeSec = -1;
     };
     videoRef.onplay = () => {
+      isWaitingInital = false;
       playDurAnchorTimeSec = -1;
       updatePlayPauseUI();
     };
-    videoRef.onpause = () => updatePlayPauseUI();
+    videoRef.onpause = () => {
+      isWaitingInital = false;
+      updatePlayPauseUI();
+    };
     videoRef.onerror = () => updatePlayPauseUI();
     videoRef.onwaiting = () => {
       isWaiting = true;
@@ -1745,11 +1754,18 @@ class PlayerScreen extends Screen {
     };
     videoRef.onplaying = () => {
       isWaiting = false;
+      isWaitingInital = false;
       updatePlayPauseUI();
     };
     videoRef.onended = () => {
       updatePlayPauseUI();
       setPlaylistPosition(curPlaylistIndex + 1);
+    };
+    videoRef.oncanplaythrough = () => {
+      if (!isWaitingInital) return;
+      isWaitingInital = false;
+      void videoRef.play();
+      updatePlayPauseUI();
     };
     
     playerHeaderElem.addEventListener('click', () => togglePlayPause());
@@ -1779,24 +1795,6 @@ class PlayerScreen extends Screen {
     
     playerElem.addEventListener('mousemove', debounce(100, () => activateControls()));
     
-    // Small delay prevents flashing. Especially with subtitles. Also prevents subtitles from not
-    // sometimes not showing when resuming a video.
-    const setVideoElemSrcDelayed = delay(200,
-    /**
-     * @param {string} src
-     * @param {number} [startSec]
-     */
-    (src, startSec) => {
-      if (!videoRef.hasRef()) return;
-      videoRef.src = src;
-      void videoRef.play();
-      
-      if (startSec) {
-        setVideoElemCurrentTimeDebounced(startSec);
-        setVideoElemCurrentTimeDebounced.flush();
-      }
-    });
-    
     /**
      * @param {number} playlistIndex
      * @param {number} [startSec] 
@@ -1823,19 +1821,19 @@ class PlayerScreen extends Screen {
       updateVideoTimeUI(0);
       updateVideoDurationUI(0);
       isWaiting = true;
-      videoRef.removeSrc();
-      videoRef.load();
-      videoRef.currentTime = 0;
+      isWaitingInital = true;
       videoRef.clearSubs();
-      //void videoRef.play();
+      
+      videoRef.src = playlistItem.videoURL;
+      setVideoElemCurrentTimeDebounced(startSec || 0);
+      setVideoElemCurrentTimeDebounced.flush();
+      videoRef.load();
       updatePlayPauseUI();
       
       videoRef.freeSubTrack();
       if (playlistItem.sasSubtitleAssURL) {
         videoRef.setSubTrackByUrl(playlistItem.sasSubtitleAssURL);
       }
-      
-      setVideoElemSrcDelayed(playlistItem.videoURL, startSec);
     }
     
     setPlaylistPosition(initalPlaylistPosition.index, initalPlaylistPosition.startSec);
@@ -2100,6 +2098,7 @@ function init() {
     subContent: `[V4+ Styles]\n[Events]`,
     fonts: config.fontURLs
   });
+  /**@type {any}*/(window).subOctopus = subOctopus;
   
   VideoPlayerSingletonRef.init({
     videoPlayerSingletonElem,
@@ -2328,41 +2327,6 @@ function debouceNOOP() {
   const debounced = () => {/*noop*/};
   debounced.flush = () => {/*noop*/};
   return debounced;
-}
-
-/**
- * @template {any[]} T
- * @param {number} delayMS 
- * @param {(...args: T) => void} fn 
- * @returns {((...args: T) => void) & {flush: () => void}}
- */
-function delay(delayMS, fn) {
-  /** @type {number} */
-  let timeoutID = 0;
-  /** @type {T | undefined} */
-  let pendingArgs = undefined;
-  /** @param {T} args */
-  const delayed = (...args) => {
-    if (timeoutID) {
-      clearTimeout(timeoutID);
-    }
-    pendingArgs = args;
-    timeoutID = setTimeout(() => {
-      timeoutID = 0;
-      pendingArgs = undefined;
-      fn(...args);
-    }, delayMS);
-  };
-  function flush() {
-    if (pendingArgs) {
-      clearTimeout(timeoutID);
-      const args = pendingArgs;
-      pendingArgs = undefined;
-      fn(...args);
-    }
-  }
-  delayed.flush = flush;
-  return delayed;
 }
 
 const MINUTE = 60;

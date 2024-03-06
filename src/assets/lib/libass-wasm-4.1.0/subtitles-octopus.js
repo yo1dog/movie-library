@@ -1098,6 +1098,7 @@ var SubtitlesOctopus = function (options) {
 
                 self.canvasParent = document.createElement('div');
                 self.canvasParent.className = 'libassjs-canvas-parent';
+                self.canvasParent.style.position = 'relative';
                 self.canvasParent.appendChild(self.canvas);
 
                 if (self.video.nextSibling) {
@@ -1113,6 +1114,11 @@ var SubtitlesOctopus = function (options) {
                 }
             }
         }
+        
+        self.canvas.style.display = 'block';
+        self.canvas.style.position = 'absolute';
+        self.canvas.style.pointerEvents = 'none';
+        
         self.ctx = self.canvas.getContext('2d');
         self.bufferCanvas = document.createElement('canvas');
         self.bufferCanvasCtx = self.bufferCanvas.getContext('2d');
@@ -1416,6 +1422,9 @@ var SubtitlesOctopus = function (options) {
         return {'width': width, 'height': height};
     }
 
+    // NOTE: There is a bug in which if the canvas is resized to the same size it already is, the
+    // canvas becomes blank. The existing checks to see if any dimention had changed was broken.
+    // I fixed it. - Mike "yo1dog" Moore
     self.resize = function (width, height, top, left) {
         var videoSize = null;
         top = top || 0;
@@ -1429,6 +1438,10 @@ var SubtitlesOctopus = function (options) {
             top = videoSize.y - offset;
             left = videoSize.x;
         }
+
+        width = Math.round(width);
+        height = Math.round(height);
+        
         if (!width || !height) {
             if (!self.video) {
                 console.error('width or height is 0. You should specify width & height for resize.');
@@ -1436,26 +1449,17 @@ var SubtitlesOctopus = function (options) {
             return;
         }
 
+        self.canvas.style.width = videoSize.width + 'px';
+        self.canvas.style.height = videoSize.height + 'px';
+        self.canvas.style.top = top + 'px';
+        self.canvas.style.left = left + 'px';
 
         if (
           self.canvas.width != width ||
-          self.canvas.height != height ||
-          self.canvas.style.top != top ||
-          self.canvas.style.left != left
+          self.canvas.height != height
         ) {
             self.canvas.width = width;
             self.canvas.height = height;
-
-            if (videoSize != null) {
-                self.canvasParent.style.position = 'relative';
-                self.canvas.style.display = 'block';
-                self.canvas.style.position = 'absolute';
-                self.canvas.style.width = videoSize.width + 'px';
-                self.canvas.style.height = videoSize.height + 'px';
-                self.canvas.style.top = top + 'px';
-                self.canvas.style.left = left + 'px';
-                self.canvas.style.pointerEvents = 'none';
-            }
 
             self.worker.postMessage({
                 target: 'canvas',
