@@ -2247,18 +2247,18 @@ function requireElem(selectors, parent) {
  * @returns {((...args: T) => void) & {flush: () => void}}
  */
 function debounce(delayMS, fn) {
-  let isDelayed = false;
+  /** @type {number} */
+  let timeoutID = 0;
   /** @type {T | undefined} */
   let pendingArgs = undefined;
   /** @param {T} args */
   const debounced = (...args) => {
-    if (isDelayed) {
+    if (timeoutID) {
       pendingArgs = args;
     }
     else {
-      isDelayed = true;
-      setTimeout(() => {
-        isDelayed = false;
+      timeoutID = setTimeout(() => {
+        timeoutID = 0;
         if (pendingArgs) {
           const args = pendingArgs;
           pendingArgs = undefined;
@@ -2270,7 +2270,7 @@ function debounce(delayMS, fn) {
   };
   function flush() {
     if (pendingArgs) {
-      isDelayed = false;
+      clearTimeout(timeoutID);
       const args = pendingArgs;
       pendingArgs = undefined;
       debounced(...args);
