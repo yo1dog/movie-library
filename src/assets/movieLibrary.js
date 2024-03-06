@@ -1706,6 +1706,7 @@ class PlayerScreen extends Screen {
     videoRef.onloadedmetadata = () => {
       updateVideoTimeUI(videoRef.currentTime);
       updatePlayPauseUI();
+      scrubberElem.disabled = false;
     };
     videoRef.ondurationchange = () => {
       updateVideoDurationUI(videoRef.duration);
@@ -1717,6 +1718,9 @@ class PlayerScreen extends Screen {
     };
     videoRef.onloadstart = () => {
       playDurAnchorTimeSec = -1;
+      // Disabling and reenabling the scrubber between loads prevents odd interfaces when holding
+      // down the scrubber between videos.
+      scrubberElem.disabled = true;
     };
     videoRef.onseeking = () => {
       playDurAnchorTimeSec = -2;
@@ -1754,7 +1758,13 @@ class PlayerScreen extends Screen {
       extendControls();
     });
     scrubberElem.addEventListener('input', () => {
-      setVideoTime((scrubberElem.valueAsNumber / 100) * videoRef.duration, true);
+      let target = (scrubberElem.valueAsNumber / 100) * videoRef.duration;
+      if (target > videoRef.duration - 1) {
+        // Prevent scrubbing to the very end and ending/advancing the video.
+        //videoRef.pause();
+        target = videoRef.duration - 1;
+      }
+      setVideoTime(target, true);
     });
     scrubberElem.addEventListener('keydown', event => {
       // Prevent all keyboard events from reaching this input.
