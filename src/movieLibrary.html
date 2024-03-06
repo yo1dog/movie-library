@@ -212,7 +212,7 @@
     <main class="screen playerScreen">
       <div class="screenBody">
         <div class="player">
-          <video autoplay></video>
+          <div class="videoPlayerSingletonContainer"></div>
           <div class="playerHeader">
             <div>
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36"><path style="fill:currentColor;" d="M24.158 30.29c.584.64.386 1.59-.353 2.007a1.538 1.538 0 0 1-.783.203c-.431 0-.854-.167-1.138-.485L10.838 19.842a1.268 1.268 0 0 1 0-1.724l11.05-12.139c.475-.518 1.3-.624 1.92-.277.739.418.936 1.364.352 2.006L13.898 18.982l10.26 11.309zM11.98 18.764a.349.349 0 0 1 .001.434l.197-.216-.198-.218zm11.076-11.67c-.012-.007-.058 0-.031-.03a.076.076 0 0 0 .03.03zm-.027 23.846a1.042 1.042 0 0 1-.007-.008l.007.008z"/></svg>
@@ -252,6 +252,10 @@
       </div>
     </main>
   </template>
+  
+  <div id="videoPlayerSingleton" inert>
+    <video autoplay></video>
+  </div>
 </body>
 
 </html>

@@ -2,10 +2,15 @@ const fs = require('fs');
 const path = require('path');
 // eslint-disable-next-line @typescript-eslint/naming-convention
 const {XMLParser} = require('fast-xml-parser');
+const {pathToFileURL} = require('url');
 
 const enableGridNavWrap = true;
 const enableMouseAtStart = false;
 const enableFullscreenToggle = false;
+
+const moviesDir = '/mnt/m/Movies/';
+const tvDir = '/mnt/m/TV/';
+const fontsDir = '/mnt/m/Data/Fonts/';
 
 /**
  * @typedef {{_text?: string; _attr?: Record<string, string>;} & {[key: string]: XMLNode[] | undefined}} XMLNode
@@ -32,7 +37,7 @@ createConfig();
 function createConfig() {
   /** @type {Movie[]} */
   const movies = [];
-  const movieNFOMatches = traverseDir('/mnt/m/Movies/', 2, dirent => dirent.name.endsWith('.nfo'));
+  const movieNFOMatches = traverseDir(moviesDir, 2, dirent => dirent.name.endsWith('.nfo'));
   
   console.log(`${movieNFOMatches.length} movie NFO files.`);
   
@@ -47,7 +52,7 @@ function createConfig() {
   
   /** @type {TVShow[]} */
   const tvShows = [];
-  const tvShowNFOMatches = traverseDir('/mnt/m/TV/', 2, dirent => dirent.name.endsWith('.nfo'));
+  const tvShowNFOMatches = traverseDir(tvDir, 2, dirent => dirent.name.endsWith('.nfo'));
   
   console.log(`${tvShowNFOMatches.length} TV Show NFO files.`);
   
@@ -60,6 +65,18 @@ function createConfig() {
   
   console.log(`${tvShows.length} TV Shows`);
   
+  const fontURLs = (
+    fs.readdirSync(fontsDir, {withFileTypes: true})
+    .filter(x => x.isFile())
+    .map(x => buildFileURL(fontsDir, x))
+  );
+  
+  console.log(`${fontURLs.length} fonts.`);
+  
+  // global.window = {}; require('../src/config.js');
+  // /** @type {import('../src/assets/types').CustomWindow} */
+  // const window = global.window;
+  
   /** @typedef {Config} */
   const config = {
     enableGridNavWrap,
@@ -67,6 +84,8 @@ function createConfig() {
     enableFullscreenToggle,
     movies,
     tvShows,
+    //...window.movieLibraryConfig,
+    fontURLs,
   };
   const configJSON = JSON.stringify(config, function (key, val) {
     if (this === config) return val; // Top level keys
@@ -330,7 +349,9 @@ function genSortStr(title) {
  */
 function buildFileURL(dir, dirent) {
   if (!dirent) return '';
-  return 'file:///' + posixToWin(path.join(dir, encodeURIComponent(dirent.name)));
+  const url = pathToFileURL(path.join(dir, dirent.name));
+  url.pathname = url.pathname.replace(/^\/mnt\/([a-zA-Z])\//, (_,x) => `${x.toUpperCase()}:/`);
+  return url.href;
 }
 
 /**
@@ -392,4 +413,9 @@ function traverseDir(dir, maxDepth, predicate, _curDepth = 0, _matches = []) {
 /** @param {string} posix */
 function posixToWin(posix) {
   return posix.replace(/^\/mnt\/(.)\//, (_,x) => x.toUpperCase() + ':\\').replaceAll('/', '\\');
+}
+/** @param {string} win */
+function winToURL(win) {
+  return win.replaceAll('\\', '/');
+  return 'file:///' + posixToWin(path.join(dir, encodeURIComponent(dirent.name)));
 }

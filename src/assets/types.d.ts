@@ -78,12 +78,13 @@ export interface Config {
  enableGridNavWrap: boolean;
  enableMouseAtStart: boolean;
  enableFullscreenToggle: boolean;
- movies: PartialDeep<Movie>[];
- tvShows: PartialDeep<TVShow>[];
+ movies: Movie[];
+ tvShows: TVShow[];
+ fontURLs: string[];
 }
 
 export interface CustomWindow {
-  movieLibraryConfig?: Partial<Config>;
+  movieLibraryConfig?: PartialDeep<Config>;
   movieLibraryFilter?: (movie: Movie) => boolean;
   movieLibrarySort?: (movieA: Movie, movieB: Movie) => number;
   tvShowLibrarySort?: (tvShowA: TVShow, tvShowB: TVShow) => number;

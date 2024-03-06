@@ -475,6 +475,17 @@ body {
   margin: auto;
 }
 
+#videoPlayerSingleton {
+  width: 100%;
+  height: 100%;
+}
+#videoPlayerSingleton video {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
 .playerScreen .screenBody {
   position: fixed;
   top: 0;
@@ -494,11 +505,9 @@ body {
   cursor: none;
 }
 
-.player video {
+.player .videoPlayerSingletonContainer {
   width: 100%;
   height: 100%;
-  margin: 0;
-  padding: 0;
 }
 .playerHeader {
   position: absolute;
