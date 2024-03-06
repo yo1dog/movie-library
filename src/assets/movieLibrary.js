@@ -570,7 +570,7 @@ class MenuScreen extends Screen {
       // TODO: hack
       if (incBack && menuItem === menuItems[0]) {
         const template = document.createElement('template');
-        template.innerHTML = '<svg class="gridItemSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 122.88 108.06"><path d="M63.94,24.28a14.28,14.28,0,0,0-20.36-20L4.1,44.42a14.27,14.27,0,0,0,0,20l38.69,39.35a14.27,14.27,0,0,0,20.35-20L48.06,68.41l60.66-.29a14.27,14.27,0,1,0-.23-28.54l-59.85.28,15.3-15.58Z"/></svg>';
+        template.innerHTML = '<svg class="gridItemSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 122.88 108.06" style="fill:currentColor;"><path d="M63.94,24.28a14.28,14.28,0,0,0-20.36-20L4.1,44.42a14.27,14.27,0,0,0,0,20l38.69,39.35a14.27,14.27,0,0,0,20.35-20L48.06,68.41l60.66-.29a14.27,14.27,0,1,0-.23-28.54l-59.85.28,15.3-15.58Z"/></svg>';
         const svgElem = requireElem('svg', template.content);
         gridItemTextElem.insertAdjacentElement('afterend', svgElem);
         gridItemTextElem.remove();
@@ -663,7 +663,7 @@ class GridScreen extends Screen {
       // TODO: hack
       if (menuItem === menuItems[0]) {
         const template = document.createElement('template');
-        template.innerHTML = '<svg class="gridItemSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 122.88 108.06"><path d="M63.94,24.28a14.28,14.28,0,0,0-20.36-20L4.1,44.42a14.27,14.27,0,0,0,0,20l38.69,39.35a14.27,14.27,0,0,0,20.35-20L48.06,68.41l60.66-.29a14.27,14.27,0,1,0-.23-28.54l-59.85.28,15.3-15.58Z"/></svg>';
+        template.innerHTML = '<svg class="gridItemSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 122.88 108.06" style="fill:currentColor;"><path d="M63.94,24.28a14.28,14.28,0,0,0-20.36-20L4.1,44.42a14.27,14.27,0,0,0,0,20l38.69,39.35a14.27,14.27,0,0,0,20.35-20L48.06,68.41l60.66-.29a14.27,14.27,0,1,0-.23-28.54l-59.85.28,15.3-15.58Z"/></svg>';
         const svgElem = requireElem('svg', template.content);
         gridItemTextElem.insertAdjacentElement('afterend', svgElem);
         gridItemTextElem.remove();
@@ -1332,7 +1332,7 @@ class PinScreen extends Screen {
  * @typedef VideoPlayerSingleton
  * @property {HTMLElement} videoPlayerSingletonElem
  * @property {HTMLVideoElement} videoElem
- * @property {SubtitlesOctopus} subOctopus
+ * @property {SubtitlesOctopus} [subOctopus]
  */
 
 class VideoPlayerSingletonRef {
@@ -1357,6 +1357,17 @@ class VideoPlayerSingletonRef {
     singleton.videoElem.addEventListener('ended', ev => this.#curRef.onended?.(ev));
     singleton.videoElem.addEventListener('loadstart', ev => this.#curRef.onloadstart?.(ev));
     singleton.videoElem.addEventListener('canplaythrough', ev => this.#curRef.oncanplaythrough?.(ev));
+  }
+  /** @param {SubtitlesOctopus} subOctopus */
+  static setSubOctopus(subOctopus) {
+    if (!this.#singleton) throw new Error(`Attempting to update singleton before init.`);
+    if (this.#singleton.subOctopus) throw new Error(`Attempting to set SubtitlesOctopus more than once.`);
+    this.#singleton.subOctopus = subOctopus;
+    this.#curRef.onSubsReady?.();
+  }
+  static unsetSubOctopus() {
+    delete this.#singleton?.subOctopus;
+    this.#curRef.onSubsFailed?.();
   }
   
   static takeRef() {
@@ -1423,13 +1434,16 @@ class VideoPlayerSingletonRef {
   }
   
   /** @param {string} url */
-  setSubTrackByUrl(url) {this.#singletonRef.subOctopus.setTrackByUrl(url);}
-  freeSubTrack() {this.#singletonRef.subOctopus.freeTrack();}
-  resizeSubCanvas() {this.#singletonRef.subOctopus.resize();}
+  setSubTrackByUrl(url) {this.#singletonRef.subOctopus?.setTrackByUrl(url);}
+  freeSubTrack() {this.#singletonRef.subOctopus?.freeTrack();}
+  resizeSubCanvas() {this.#singletonRef.subOctopus?.resize();}
   clearSubs() {
-    this.#singletonRef.subOctopus.setCurrentTime(-1);
-    this.#singletonRef.subOctopus.setIsPaused(true);
+    this.#singletonRef.subOctopus?.setCurrentTime(-1);
+    this.#singletonRef.subOctopus?.setIsPaused(true);
   }
+  get isSubsReady() {return this.#singletonRef.subOctopus? true : false;}
+  /** @type {null | (() => void)} */ onSubsReady = null;
+  /** @type {null | (() => void)} */ onSubsFailed = null;
 }
 
 /**
@@ -1466,6 +1480,7 @@ class PlayerScreen extends Screen {
     let curPlaylistIndex;
     let isWaiting = true;
     let isWaitingInital = true;
+    let didSubsFail = false;
     
     let canUpdateState = false;
     let playDurAnchorTimeSec = -2;
@@ -1490,6 +1505,7 @@ class PlayerScreen extends Screen {
     const playSVG = requireElem('.playSVG', playPauseButtonElem);
     const pauseSVG = requireElem('.pauseSVG', playPauseButtonElem);
     const loadingSVG = requireElem('.loadingSVG', playPauseButtonElem);
+    const errorSVG = requireElem('.errorSVG', playPauseButtonElem);
     const fastForwardButtonElem = /** @type {HTMLButtonElement} */(requireElem('.playerFastForwardButton', screenElem));
     const nextButtonElem = /** @type {HTMLButtonElement} */(requireElem('.playerNextButton', screenElem));
     const fullscreenButtonElem = /** @type {HTMLButtonElement} */(requireElem('.playerFullscreenButton', screenElem));
@@ -1637,9 +1653,19 @@ class PlayerScreen extends Screen {
       return isWaitingInital || (!videoRef.paused && !videoRef.ended);
     }
     function updatePlayPauseUI() {
-      if (getIsPlaying()) {
+      const didVideoFail = Boolean(videoRef.error);
+      playPauseButtonElem.classList.toggle('error', didVideoFail || didSubsFail);
+      
+      if (didVideoFail) {
         playSVG.style.display = 'none';
-        //const isWaiting = videoRef.readyState < videoRef.HAVE_FUTURE_DATA;
+        pauseSVG.style.display = 'none';
+        loadingSVG.style.display = 'none';
+        errorSVG.style.display = '';
+      }
+      else if (getIsPlaying()) {
+        playSVG.style.display = 'none';
+        errorSVG.style.display = 'none';
+        
         if (isWaiting) {
           pauseSVG.style.display = 'none';
           loadingSVG.style.display = '';
@@ -1653,7 +1679,7 @@ class PlayerScreen extends Screen {
         playSVG.style.display = '';
         pauseSVG.style.display = 'none';
         loadingSVG.style.display = 'none';
-        playSVG.style.color = videoRef.error? 'red' : '';
+        errorSVG.style.display = 'none';
       }
     }
     function togglePlayPause() {
@@ -1767,6 +1793,21 @@ class PlayerScreen extends Screen {
       void videoRef.play();
       updatePlayPauseUI();
     };
+    videoRef.onSubsReady = () => {
+      if (!videoRef.hasRef()) return;
+      const {sasSubtitleAssURL} = playlistItems[curPlaylistIndex];
+      if (sasSubtitleAssURL) {
+        videoRef.setSubTrackByUrl(sasSubtitleAssURL);
+      }
+      didSubsFail = false;
+      updatePlayPauseUI();
+    };
+    videoRef.onSubsFailed = () => {
+      if (playlistItems[curPlaylistIndex].sasSubtitleAssURL) {
+        didSubsFail = true;
+        updatePlayPauseUI();
+      }
+    };
     
     playerHeaderElem.addEventListener('click', () => togglePlayPause());
     videoPlayerSingletonContainerElem.addEventListener('click', () => togglePlayPause());
@@ -1828,12 +1869,16 @@ class PlayerScreen extends Screen {
       setVideoElemCurrentTimeDebounced(startSec || 0);
       setVideoElemCurrentTimeDebounced.flush();
       videoRef.load();
-      updatePlayPauseUI();
       
       videoRef.freeSubTrack();
       if (playlistItem.sasSubtitleAssURL) {
         videoRef.setSubTrackByUrl(playlistItem.sasSubtitleAssURL);
+        didSubsFail = !videoRef.isSubsReady;
       }
+      else {
+        didSubsFail = false;
+      }
+      updatePlayPauseUI();
     }
     
     setPlaylistPosition(initalPlaylistPosition.index, initalPlaylistPosition.startSec);
@@ -2088,24 +2133,38 @@ function init() {
   videoPlayerSingletonElem.remove();
   const videoElem = /** @type {HTMLVideoElement} */(requireElem('video', videoPlayerSingletonElem));
   
-  // For ASS subtitle rendering to work in Chrome/Edge, see README.md
-  /** @type {SubtitlesOctopus} */
-  // @ts-expect-error
-  // eslint-disable-next-line no-undef
-  const subOctopus = new SubtitlesOctopus({
-    video: videoElem,
-    workerUrl: './assets/lib/libass-wasm-4.1.0/subtitles-octopus-worker.js',
-    legacyWorkerUrl: './assets/lib/libass-wasm-4.1.0/subtitles-octopus-worker-legacy.js',
-    subContent: `[V4+ Styles]\n[Events]`,
-    fonts: config.fontURLs
-  });
-  /**@type {any}*/(window).subOctopus = subOctopus;
-  
   VideoPlayerSingletonRef.init({
     videoPlayerSingletonElem,
     videoElem,
-    subOctopus
   });
+  
+  try {
+    // For ASS subtitle rendering to work in Chrome/Edge, see README.md
+    /** @type {SubtitlesOctopus} */
+    // @ts-expect-error
+    // eslint-disable-next-line no-undef
+    const subOctopus = new SubtitlesOctopus({
+      video: videoElem,
+      workerUrl: './assets/lib/libass-wasm-4.1.0/subtitles-octopus-worker.js',
+      legacyWorkerUrl: './assets/lib/libass-wasm-4.1.0/subtitles-octopus-worker-legacy.js',
+      subContent: `[V4+ Styles]\n[Events]`,
+      fonts: config.fontURLs,
+      onReady: () => {
+        console.log(`SubtitlesOctopus ready.`);
+        VideoPlayerSingletonRef.setSubOctopus(subOctopus);
+      },
+      /** @param {unknown} err */
+      onError: err => {
+        console.error(`SubtitlesOctopus failed:`, err);
+        VideoPlayerSingletonRef.unsetSubOctopus();
+      }
+    });
+    /**@type {any}*/(window).subOctopus = subOctopus;
+  }
+  catch(err) {
+    console.error(`Error constructing SubtitlesOctopus`);
+    console.error(err);
+  }
   
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const testPaths = Array(10).fill(0).map((_,i) => `C:\\Users\\Mike\\Downloads\\thing${i+1}.mp4`);
