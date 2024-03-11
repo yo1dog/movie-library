@@ -2270,10 +2270,11 @@ M:\Bumpers\Ambient Swim Bumpers\bump147.mp4
     }
   });
   
-  // Prevent any element from ever recieving focus. This prevents inputs from consuming key events.
+  // Prevent elements from ever recieving focus. This prevents inputs from consuming key events.
   window.addEventListener('focusin', event => {
-    if (event.target !== document.body) {
-      /** @type {HTMLElement} */(event.target)?.blur?.();
+    const target = /** @type {HTMLElement} */(event.target);
+    if (target.tagName !== 'BODY' && target.tagName !== 'MAIN') {
+      target.blur();
     }
   });
   
