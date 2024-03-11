@@ -2374,6 +2374,7 @@ function debounce(delayMS, fn) {
   function flush() {
     if (pendingArgs) {
       clearTimeout(timeoutID);
+      timeoutID = 0;
       const args = pendingArgs;
       pendingArgs = undefined;
       debounced(...args);
