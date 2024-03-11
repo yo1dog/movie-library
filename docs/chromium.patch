@@ -1,0 +1,88 @@
+diff --git a/chrome/browser/ui/startup/infobar_utils.cc b/chrome/browser/ui/startup/infobar_utils.cc
+index 0ee4b04c7b..b249e0942e 100644
+--- a/chrome/browser/ui/startup/infobar_utils.cc
++++ b/chrome/browser/ui/startup/infobar_utils.cc
+@@ -27,6 +27,7 @@
+ #include "components/infobars/content/content_infobar_manager.h"
+ #include "components/prefs/pref_service.h"
+ #include "content/public/common/content_switches.h"
++#include "google_apis/buildflags.h"
+ #include "google_apis/google_api_keys.h"
+ #include "services/network/public/cpp/network_switches.h"
+ 
+@@ -36,6 +37,11 @@
+ 
+ namespace {
+ bool ShouldShowBadFlagsSecurityWarnings() {
++  if (base::CommandLine::ForCurrentProcess()->HasSwitch(
++      switches::kDisableCommandLineFlagSecurityWarnings)) {
++    return false;
++  }
++  
+ #if !BUILDFLAG(IS_CHROMEOS_ASH)
+   PrefService* local_state = g_browser_process->local_state();
+   if (!local_state)
+@@ -146,8 +152,10 @@ void AddInfoBarsIfNecessary(Browser* browser,
+     infobars::ContentInfoBarManager* infobar_manager =
+         infobars::ContentInfoBarManager::FromWebContents(web_contents);
+ 
++    #if !BUILDFLAG(DISABLE_GOOGLE_API_KEYS_WARNING)
+     if (!google_apis::HasAPIKeyConfigured())
+       GoogleApiKeysInfoBarDelegate::Create(infobar_manager);
++    #endif
+ 
+     if (ObsoleteSystem::IsObsoleteNowOrSoon()) {
+       PrefService* local_state = g_browser_process->local_state();
+diff --git a/chrome/common/chrome_switches.cc b/chrome/common/chrome_switches.cc
+index 356739e4e0..9fc1e37e8b 100644
+--- a/chrome/common/chrome_switches.cc
++++ b/chrome/common/chrome_switches.cc
+@@ -178,6 +178,10 @@ const char kDisableAutoMaximizeForTests[] = "disable-auto-maximize-for-tests";
+ // measurements.
+ const char kDisableBackgroundNetworking[] = "disable-background-networking";
+ 
++// Disable security warnings for some potentially bad command-line flags.
++// Overrides the CommandLineFlagSecurityWarningsEnabled policy setting.
++const char kDisableCommandLineFlagSecurityWarnings[] = "disable-command-line-flag-security-warnings";
++
+ // Disable default component extensions with background pages - useful for
+ // performance tests where these pages may interfere with perf results.
+ const char kDisableComponentExtensionsWithBackgroundPages[] =
+diff --git a/chrome/common/chrome_switches.h b/chrome/common/chrome_switches.h
+index 96ce222329..16cdc54cf2 100644
+--- a/chrome/common/chrome_switches.h
++++ b/chrome/common/chrome_switches.h
+@@ -72,6 +72,7 @@ extern const char kDisableAutoMaximizeForTests[];
+ #endif
+ extern const char kDisableBackgroundNetworking[];
+ extern const char kDisableClientSidePhishingDetection[];
++extern const char kDisableCommandLineFlagSecurityWarnings[];
+ extern const char kDisableComponentExtensionsWithBackgroundPages[];
+ #if BUILDFLAG(ENABLE_COMPONENT_UPDATER)
+ extern const char kDisableComponentUpdate[];
+diff --git a/google_apis/BUILD.gn b/google_apis/BUILD.gn
+index b2a852445e..32852fbb2b 100644
+--- a/google_apis/BUILD.gn
++++ b/google_apis/BUILD.gn
+@@ -47,6 +47,9 @@ declare_args() {
+ 
+   # See google_api_key.
+   google_default_client_secret = ""
++
++  # Set to true to disable the missing Google API Keys warning prompts.
++  disable_google_api_keys_warning = false
+ }
+ 
+ if (use_official_google_api_keys == "") {
+@@ -90,7 +93,10 @@ _use_official_google_keys_and_generate_metrics_key_header =
+ 
+ buildflag_header("buildflags") {
+   header = "buildflags.h"
+-  flags = [ "SUPPORT_EXTERNAL_GOOGLE_API_KEY=$support_external_google_api_key" ]
++  flags = [
++    "SUPPORT_EXTERNAL_GOOGLE_API_KEY=$support_external_google_api_key",
++    "DISABLE_GOOGLE_API_KEYS_WARNING=$disable_google_api_keys_warning",
++  ]
+ }
+ 
+ config("key_defines") {

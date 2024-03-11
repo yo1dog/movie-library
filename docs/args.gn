@@ -1,0 +1,25 @@
+# Set build arguments here. See `gn help buildargs`.
+is_debug=false
+is_official_build=true
+is_component_build=false
+is_clang=true
+target_cpu="x64"
+enable_nacl=false
+symbol_level=0
+blink_symbol_level=0
+v8_symbol_level=0
+ffmpeg_branding="Chrome"
+
+# Custom
+disable_google_api_keys_warning=true
+
+#https://chromium.googlesource.com/chromium/src/+/HEAD/media/media_options.gni
+#https://github.com/cjw1115/enable-chromium-ac3-ec3-system-decoding
+
+proprietary_codecs=true
+enable_platform_ac3_eac3_audio=true
+#enable_platform_ac4_audio=true
+#enable_platform_mpeg_h_audio=true
+enable_platform_dts_audio=true
+#enable_platform_iamf_audio=true
+#enable_platform_vvc=true
